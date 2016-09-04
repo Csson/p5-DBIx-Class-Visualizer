@@ -1,5 +1,5 @@
 {
-   "abstract" : "Short intro",
+   "abstract" : "Visualize a DBIx::Class schema",
    "author" : [
       "Erik Carlsson <info@code301.com>"
    ],
@@ -115,7 +115,11 @@
       },
       "runtime" : {
          "requires" : {
-            "perl" : "5.010000"
+            "DateTime::Tiny" : "1.06",
+            "GraphViz2" : "2.38",
+            "List::Util" : "1.45",
+            "Moo" : "2.00",
+            "perl" : "5.010001"
          }
       },
       "test" : {

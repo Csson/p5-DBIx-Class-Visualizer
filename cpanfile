@@ -1,7 +1,11 @@
-# This file was auto-generated from iller.yaml by Dist::Iller on 2016-09-04 12:31:29 UTC.
+# This file was auto-generated from iller.yaml by Dist::Iller on 2016-09-04 16:58:49 UTC.
 
 on runtime => sub {
-    requires 'perl' => '5.010000';
+    requires 'DateTime::Tiny' => '1.06';
+    requires 'GraphViz2' => '2.38';
+    requires 'List::Util' => '1.45';
+    requires 'Moo' => '2.00';
+    requires 'perl' => '5.010001';
 };
 on test => sub {
     requires 'ExtUtils::MakeMaker' => '0';

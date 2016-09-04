@@ -2,21 +2,26 @@
 use strict;
 use warnings;
 
-use 5.010000;
+use 5.010001;
 
 use ExtUtils::MakeMaker;
 
 my %WriteMakefileArgs = (
-  "ABSTRACT" => "Short intro",
+  "ABSTRACT" => "Visualize a DBIx::Class schema",
   "AUTHOR" => "Erik Carlsson <info\@code301.com>",
   "CONFIGURE_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0
   },
   "DISTNAME" => "DBIx-Class-Visualizer",
   "LICENSE" => "perl",
-  "MIN_PERL_VERSION" => "5.010000",
+  "MIN_PERL_VERSION" => "5.010001",
   "NAME" => "DBIx::Class::Visualizer",
-  "PREREQ_PM" => {},
+  "PREREQ_PM" => {
+    "DateTime::Tiny" => "1.06",
+    "GraphViz2" => "2.38",
+    "List::Util" => "1.45",
+    "Moo" => "2.00"
+  },
   "TEST_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0,
     "File::Spec" => 0,
@@ -32,10 +37,14 @@ my %WriteMakefileArgs = (
 
 
 my %FallbackPrereqs = (
+  "DateTime::Tiny" => "1.06",
   "ExtUtils::MakeMaker" => 0,
   "File::Spec" => 0,
+  "GraphViz2" => "2.38",
   "IO::Handle" => 0,
   "IPC::Open3" => 0,
+  "List::Util" => "1.45",
+  "Moo" => "2.00",
   "Test::More" => "0.96"
 );
 
