@@ -58,6 +58,7 @@ has graphviz_config => (
 has graph => (
     is => 'ro',
     lazy => 1,
+    init_arg => undef,
     builder => '_build_graph',
 );
 sub _build_graph {
@@ -159,7 +160,7 @@ sub add_edges {
             warn "! No reverse relationship $source_name <-> $other_source_name";
             next RELATION;
         }
-        
+
         my $arrowhead = $self->get_arrow_type($relation);
         my $arrowtail = $self->get_arrow_type($other_relation);
 
@@ -264,11 +265,48 @@ __END__
 =head1 SYNOPSIS
 
     use DBIx::Class::Visualizer;
+    use A::DBIx::Class::Schema;
+
+    my $schema = A::DBIx::Class::Schema->connect;
+    my $svg = DBIx::Class::Visualizer->new->svg;
 
 =head1 DESCRIPTION
 
-DBIx::Class::Visualizer is ...
+DBIx::Class::Visualizer is a L<GraphViz2> renderer for L<DBIx::Class> schemata.
+
+=head1 ATTRIBUTES
+
+=head2 schema
+
+Required instance of a L<DBIx::Class::Schema>.
+
+=head2 graphviz_config
+
+Optional hashref. This hashref is passed to the L<GraphViz2> constructor. Set this if the defaults don't work. Setting this will replace the defaults.
+
+=head2 graph
+
+Can't be passed in the constructor. This contains the constructed L<GraphViz2> object. Use this if you wish to render the visualization manually:
+
+    my $png = DBIx::Class::Visualizer->new(schema => $schema)->graph->run(output_file => 'myschema.png', format => 'png');
+
+
+=head1 METHODS
+
+=head2 new
+
+The constructor.
+
+=head2 svg
+
+Takes no arguments, and returns the rendered svg document as a string.
+
+
 
 =head1 SEE ALSO
+
+=for :list
+* L<Mojolicious::Plugin::DbicSchemaViewer> - A L<Mojolicious> plugin that uses this class
+* L<GraphViz2::DBI> - A similar idea
 
 =cut
