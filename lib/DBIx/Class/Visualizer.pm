@@ -274,6 +274,9 @@ __END__
 
 DBIx::Class::Visualizer is a L<GraphViz2> renderer for L<DBIx::Class> schemata.
 
+On the relatively small schemata (about twenty result classes) that I have tried it on it produces reasonably readable graphs. See C<example/visualized.svg> for a
+simple example (also available on L<Github|http://htmlpreview.github.io/?https://github.com/Csson/p5-DBIx-Class-Visualizer/blob/master/example/visualized.svg>).
+
 =head1 ATTRIBUTES
 
 =head2 schema
