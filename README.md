@@ -28,6 +28,9 @@ Version 0.0100, released 2016-09-04.
 
 DBIx::Class::Visualizer is a [GraphViz2](https://metacpan.org/pod/GraphViz2) renderer for [DBIx::Class](https://metacpan.org/pod/DBIx::Class) schemata.
 
+On the relatively small schemata (about twenty result classes) that I have tried it on it produces reasonably readable graphs. See `example/visualized.svg` for a
+simple example (also available on [Github](http://htmlpreview.github.io/?https://github.com/Csson/p5-DBIx-Class-Visualizer/blob/master/example/visualized.svg)).
+
 # ATTRIBUTES
 
 ## schema
