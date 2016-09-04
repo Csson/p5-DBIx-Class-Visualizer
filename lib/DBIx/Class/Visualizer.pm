@@ -6,7 +6,7 @@ package DBIx::Class::Visualizer;
 
 # ABSTRACT: Visualize a DBIx::Class schema
 # AUTHORITY
-our $VERSION = '0.0100';
+our $VERSION = '0.0101';
 
 use GraphViz2;
 use List::Util qw/any/;
