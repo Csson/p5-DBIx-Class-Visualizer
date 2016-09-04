@@ -15,10 +15,21 @@ header:
 prereqs:
   runtime:
     requires:
-      - perl: 5.010000
+      - perl: 5.010001
+      - GraphViz2: 2.38
+      - List::Util
+      - DateTime::Tiny: 1.06
+      - Moo: 2.00
 
 plugins:
   - +config: Author::CSSON
+
+  - +extend_plugin: TravisYML
+    sudo: 1
+    post_before_install:
+     - sudo apt-get update -qq
+     - sudo apt-get install -y graphviz
+    pre_install: cpanm GraphViz2
 
 ---
 doctype: weaver
