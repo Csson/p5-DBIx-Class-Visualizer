@@ -4,6 +4,7 @@ Revision history for DBIx-Class-Visualizer
  [API Changes]
 
  [Bug Fixes]
+ - Remove use of /r in a regexp.
 
  [Documentation]
 
@@ -18,6 +19,7 @@ Revision history for DBIx-Class-Visualizer
  [Stats & Dependency Changes]
 
  [Testing]
+ - Make Travis test on 5.10 too.
 
 0.0100 2016-09-04T20:13:20Z UTC
  - Initial release

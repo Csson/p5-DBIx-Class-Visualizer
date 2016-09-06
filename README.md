@@ -6,15 +6,14 @@ DBIx::Class::Visualizer - Visualize a DBIx::Class schema
     <p>
     <img src="https://img.shields.io/badge/perl-5.10.1+-blue.svg" alt="Requires Perl 5.10.1+" />
     <a href="https://travis-ci.org/Csson/p5-DBIx-Class-Visualizer"><img src="https://api.travis-ci.org/Csson/p5-DBIx-Class-Visualizer.svg?branch=master" alt="Travis status" /></a>
-    <a href="http://cpants.cpanauthors.org/release/CSSON/DBIx-Class-Visualizer-0.0100"><img src="http://badgedepot.code301.com/badge/kwalitee/CSSON/DBIx-Class-Visualizer/0.0100" alt="Distribution kwalitee" /></a>
-    <a href="http://matrix.cpantesters.org/?dist=DBIx-Class-Visualizer%200.0100"><img src="http://badgedepot.code301.com/badge/cpantesters/DBIx-Class-Visualizer/0.0100" alt="CPAN Testers result" /></a>
-    <img src="https://img.shields.io/badge/coverage-15.3%-red.svg" alt="coverage 15.3%" />
+    <a href="http://cpants.cpanauthors.org/release/CSSON/DBIx-Class-Visualizer-0.0101"><img src="http://badgedepot.code301.com/badge/kwalitee/CSSON/DBIx-Class-Visualizer/0.0101" alt="Distribution kwalitee" /></a>
+    <a href="http://matrix.cpantesters.org/?dist=DBIx-Class-Visualizer%200.0101"><img src="http://badgedepot.code301.com/badge/cpantesters/DBIx-Class-Visualizer/0.0101" alt="CPAN Testers result" /></a>
     </p>
 </div>
 
 # VERSION
 
-Version 0.0100, released 2016-09-04.
+Version 0.0101, released 2016-09-06.
 
 # SYNOPSIS
 
@@ -35,17 +34,24 @@ simple example (also available on [Github](http://htmlpreview.github.io/?https:/
 
 ## schema
 
-Required instance of a [DBIx::Class::Schema](https://metacpan.org/pod/DBIx::Class::Schema).
+Required. An instance of a [DBIx::Class::Schema](https://metacpan.org/pod/DBIx::Class::Schema) class.
 
 ## graphviz\_config
 
 Optional hashref. This hashref is passed to the [GraphViz2](https://metacpan.org/pod/GraphViz2) constructor. Set this if the defaults don't work. Setting this will replace the defaults.
 
+Won't be used if you pass `graph` to the constructor.
+
 ## graph
 
-Can't be passed in the constructor. This contains the constructed [GraphViz2](https://metacpan.org/pod/GraphViz2) object. Use this if you wish to render the visualization manually:
+Optional. A [GraphViz2](https://metacpan.org/pod/GraphViz2) object. Set this if you need to use an already constructed graph.
 
-    my $png = DBIx::Class::Visualizer->new(schema => $schema)->graph->run(output_file => 'myschema.png', format => 'png');
+It can be useful if you, for example, wishes to see the arguments to the dot renderer:
+
+    my $visualizer = DBIx::Class::Visualizer->new(schema => $schema);
+    my $svg = $visualizer->svg;
+
+    my $dotfile = $visualizer->graph->dot_input;
 
 # METHODS
 
@@ -57,10 +63,16 @@ The constructor.
 
 Takes no arguments, and returns the rendered svg document as a string.
 
+## run
+
+A shortcut for ["run" in GraphViz2](https://metacpan.org/pod/GraphViz2#run):
+
+    DBIx::Class::Visualizer->new(schema => $schema)->run(output_file => 'myschema.png', format => 'png');
+
 # SEE ALSO
 
 - [Mojolicious::Plugin::DbicSchemaViewer](https://metacpan.org/pod/Mojolicious::Plugin::DbicSchemaViewer) - A [Mojolicious](https://metacpan.org/pod/Mojolicious) plugin that uses this class
-- [GraphViz2::DBI](https://metacpan.org/pod/GraphViz2::DBI) - A similar idea
+- [GraphViz2::DBI](https://metacpan.org/pod/GraphViz2::DBI) - Visualizes a schema by inspecting the database.
 
 # SOURCE
 
