@@ -13,6 +13,8 @@ use Log::Handler;
 use List::Util qw/any none/;
 use DateTime::Tiny;
 use Moo;
+use Mojo::DOM;
+use Mojo::Util qw/trim/;
 use Types::Standard qw/ArrayRef RegexpRef Maybe/;
 
 has logger => (
@@ -51,7 +53,7 @@ has graphviz_config => (
                 splines => 'true',
                 %label,
                 fontname => 'helvetica',
-                fontsize => 8,
+                fontsize => 7,
                 labeljust => 'l',
                 nodesep => 0.38,
                 ranksep => 0.46,
@@ -174,24 +176,149 @@ sub svg {
     my $output;
     $self->graph->run(output_file => \$output, format => 'svg');
 
-    # remove padding
-    $output =~ s{<text [^>]*fill="white"[^>]*>_*?</text>}{}g;
+    my $dom = Mojo::DOM->new($output);
 
-    # first add a thinner stroke-width to the last polygon in each <g> (the border around each table)
-    $output =~ s{ <polygon [^>]*\K />(?=[^<]* </g>)}{ stroke-width="0.4"/>}mxg;
-    # and then remove stroke-width's for a marked polygon (stroke-width="3")
-    $output =~ s{ <polygon [^>]* \K stroke-width="3" ([^>]*) stroke-width="0.4" />(?=[^<]* </g>)}{ $1 />}mxg;
+    # remove elements used for padding
+    $dom->find('text[fill="white"]')->each(sub {
+        my $el = shift;
+        $el->remove if $el->text =~ m{^_+$};
+    });
+    $dom->find('text')->each(sub {
+        my $el = shift;
+        $el->remove if !length trim $el->text;
+    });
+
+    # make some lines thinner
+    $dom->find('polygon:not([stroke-width])')->each(sub {
+      #  shift->attr('stroke-width', 0.4);
+    });
+    # remove attributes and set classes
+    $dom->find('.node polygon[fill="#fefefe"]')->each(sub {
+        my $el = shift;
+        delete $el->attr->{'fill'};
+        delete $el->attr->{'stroke'};
+        $el->attr(class => 'column_name');
+    });
+    $dom->find('.node polygon[fill="#dddfdd"]:not(:last-of-type)')->each(sub {
+        my $el = shift;
+        delete $el->attr->{'fill'};
+        delete $el->attr->{'stroke'};
+        $el->attr(class => 'table_name');
+    });
+    $dom->find('.node polygon:last-of-type')->each(sub {
+        my $el = shift;
+        delete $el->attr->{'fill'};
+        delete $el->attr->{'stroke'};
+        $el->attr(class => 'border');
+    });
+    $dom->find('.node text:first-of-type')->each(sub {
+        shift->attr->{'class'} = 'table_name';
+    });
+    $dom->find('.node text:not(.table_name)')->each(sub {
+        my $el = shift;
+        delete $el->attr->{'fill'};
+        $el->attr(class => 'column_name');
+    });
+
+    # add data attributes to everything in nodes
+    $dom->find('.node')->each(sub {
+        my $node = shift;
+        my $table_name = $node->at('text.table_name')->all_text;
+        $node->attr('data-table-name', $table_name);
+
+        $node->find('text.column_name')->each(sub {
+            my $el = shift;
+            $el->attr('data-column-name', $el->all_text);
+            $el->previous->attr('data-column-name', $el->all_text); # background polygon
+        });
+    });
+    # add data attributes to edges
+    $dom->find('.edge')->each(sub {
+        my $edge = shift;
+        my $title = $edge->at('title')->text;
+
+        if($title =~ m{ ^ ([^:]+) : ([^&]+?) -> ([^:;]+) : (.+) $ }x) {
+            $edge->attr('data-table-origin', $1);
+            $edge->attr('data-column-origin', $2);
+            $edge->attr('data-table-destination', $3);
+            $edge->attr('data-column-destination', $4);
+        }
+    });
 
     # make it a bit lighter
-    $output =~ s{(fill|stroke)="black"}{$1="#444444"}g;
+    $dom->find('[fill="black"]')->each(sub { shift->attr('fill', '#444444') });
+    $dom->find('[stroke="black"]')->each(sub { shift->attr('stroke', '#444444') });
 
     # Fix the graph name
     my $schema_name = ref $self->schema;
-    $output =~ s{<title>Perl</title>}{<title>$schema_name</title>};
+    $dom->find('title')->first(content => $schema_name);
 
-    # Cleanup edge alt texts
-    $output =~ s{ <title>\K (?<origin_table>[^:]+) : (?<origin_column>[^&]+?) &.*? (?<destination_table>[^:;]+) : (?<destination_column>[^<]+) (?=</title>) }{$+{'origin_table'}.$+{'origin_column'} &#45;&gt; $+{'destination_table'}.$+{'destination_column'}}xg;
-    return $output;
+    # Cleanup edge alt texts, turn:
+    # tablename:columnname->tablename:columnname
+    # into
+    # tablename.columnname -> tablename.columnname
+    $dom->find('title')->each(sub {
+        my $el = shift;
+        my $text = $el->text;
+
+        $text =~ s{ ^ ([^:]+) : ([^&]+?) -> ([^:;]+) : (.+) $ }{$1.$2 -> $3.$4}x;
+        $el->content($text);
+    });
+
+    $dom->find('.edge path')->each(sub {
+        my $el = shift;
+        delete $el->attr->{'stroke'};
+        delete $el->attr->{'stroke-width'};
+    });
+
+    # Place a copy of all edges on top. Useful to show relationship type for the hovered relationship
+    # on keys with many relationships.
+    my $root = $dom->at('g')->children('g')->last;
+    if(0) {
+        $dom->find('g.edge')->each(sub {
+            my $el = shift;
+            my $new_content = $el->to_string;
+
+            # The edge shown on hover
+            {
+                $root->append($new_content);
+                my $new_el = $dom->find('#'.$el->attr('id'))->last;
+                $new_el->attr({
+                    id => 'hovered_' . $el->attr('id'),
+                    class => 'hovered_edge',
+                    style => 'display: none;',
+                });
+                $new_el->children->each(sub {
+                    my $elem = shift;
+                    $elem->attr(stroke => '#ff00ff');
+                });
+                $new_el->children('polyline, polygon')->each(sub {
+                    my $elem = shift;
+                    $elem->attr(fill => '#ff00ff');
+                });
+            }
+
+            # The edge shown on column hover
+            {
+                $root->append($new_content);
+                my $new_el = $dom->find('#'.$el->attr('id'))->last;
+                $new_el->attr({
+                    id => 'hovercolumn_' . $el->attr('id'),
+                    class => 'hovercolumn_edge',
+                    style => 'display: none;',
+                });
+                $new_el->children->each(sub {
+                    my $elem = shift;
+                    $elem->attr(stroke => '#44aa44');
+                });
+                $new_el->children('polyline, polygon')->each(sub {
+                    my $elem = shift;
+                    $elem->attr(fill => '#11ff66');
+                });
+            }
+        });
+    }
+    return $dom->to_string;
 }
 
 sub add_node {
@@ -240,9 +367,6 @@ sub add_edges {
         next RELATION if $self->has_skip_result_sources && do { my $regex = $self->skip_result_sources; $other_source_name =~ m/$regex/; };
         my $other_node_name = $self->node_name($other_source_name);
 
-        # Have we already added the edge from the reversed direction?
-        next RELATION if exists $self->added_relationships->{"$other_node_name-->$node_name"};
-
         my $other_rs = $self->schema->resultset($other_source_name)->result_source;
         my $other_relation;
 
@@ -278,11 +402,18 @@ sub add_edges {
                              : $node_name
                              ;
 
+        # Have we already added the edge from the reversed direction?
+        next RELATION if exists $self->added_relationships->{"$other_node_name.$headport-->$node_name.$tailport"};
+
 
         # When displaying a single result source, and its closest relations, place some relations to the left and some to the right.
         # The placement is dependent on the direction of the connection. Hence: invert some relations.
         if($self->single_result_source) {
             if(any { $_ eq $self->get_relation_type($relation) } (qw/belongs_to has_one/)) {
+                my $placeholder_source_name = $source_name;
+                $source_name = $other_source_name;
+                $other_source_name = $placeholder_source_name;
+
                 my $placeholder_node = $node_name;
                 $node_name = $other_node_name;
                 $other_node_name = $placeholder_node;
@@ -309,8 +440,8 @@ sub add_edges {
             penwidth => 2,
         );
 
-        $self->added_relationships->{ "$node_name-->$other_node_name" } = 1;
-        $self->added_relationships->{ "$other_node_name-->$node_name" } = 1;
+        $self->added_relationships->{ "$node_name.$tailport-->$other_node_name.$headport" } = 1;
+        $self->added_relationships->{ "$other_node_name.$headport-->$node_name.$tailport" } = 1;
 
         push @{ $self->ordered_relationships } => (
             "$node_name-->$other_node_name",
@@ -398,8 +529,9 @@ sub create_label_html {
         $column_name = $column->{'is_foreign'} ? "<u>$column_name</u>" : $column_name;
 
         push @{ $column_html } => qq{
-            <tr><td align="left" port="$clean_column_name" bgcolor="#fefefe"> <font point-size="12" color="#222222">$column_name</font><font color="white">_@{[ $self->padding($column_name) ]}</font></td></tr>};
+            <tr><td align="left" port="$clean_column_name" bgcolor="#fefefe"> <font point-size="10" color="#222222">$column_name</font><font color="white">_@{[ $self->padding($column_name) ]}</font></td></tr>};
     }
+    # Don't change colors here without fixing svg(). Magic numbers..
     my $html = qq{
         <<table cellborder="0" cellpadding="1" cellspacing="0" border="@{[ $mark_label ? '3' : '1' ]}" width="150">
             <tr><td bgcolor="#DDDFDD" width="150"><font point-size="1"> </font></td></tr>
