@@ -212,7 +212,9 @@ sub svg {
         $el->attr(class => 'border');
     });
     $dom->find('.node text:first-of-type')->each(sub {
-        shift->attr->{'class'} = 'table_name';
+        my $el = shift;
+        delete $el->attr->{'fill'};
+        $el->attr->{'class'} = 'table_name';
     });
     $dom->find('.node text:not(.table_name)')->each(sub {
         my $el = shift;
@@ -238,10 +240,10 @@ sub svg {
         my $title = $edge->at('title')->text;
 
         if($title =~ m{ ^ ([^:]+) : ([^&]+?) -> ([^:;]+) : (.+) $ }x) {
-            $edge->attr('data-table-origin', $1);
-            $edge->attr('data-column-origin', $2);
-            $edge->attr('data-table-destination', $3);
-            $edge->attr('data-column-destination', $4);
+            $edge->attr('data-origin-table', $1);
+            $edge->attr('data-origin-column', $2);
+            $edge->attr('data-destination-table', $3);
+            $edge->attr('data-destination-column', $4);
         }
     });
 
@@ -533,8 +535,8 @@ sub create_label_html {
     }
     # Don't change colors here without fixing svg(). Magic numbers..
     my $html = qq{
-        <<table cellborder="0" cellpadding="1" cellspacing="0" border="@{[ $mark_label ? '3' : '1' ]}" width="150">
-            <tr><td bgcolor="#DDDFDD" width="150"><font point-size="1"> </font></td></tr>
+        <<table cellborder="0" cellpadding="0.8" cellspacing="0" border="@{[ $mark_label ? '3' : '1' ]}" width="150">
+            <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
             <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>$data->{'source_name'}</b></font><font color="white">_@{[ $self->padding($data->{'source_name'}) ]}</font></td></tr>
             <tr><td><font point-size="3"> </font></td></tr>
             } . join ('', @{ $column_html }) . qq{
