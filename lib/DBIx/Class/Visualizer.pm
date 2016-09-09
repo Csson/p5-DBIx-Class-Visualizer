@@ -16,18 +16,27 @@ use Moo;
 use Mojo::DOM;
 use Mojo::Util qw/trim/;
 use Types::Standard qw/ArrayRef RegexpRef Maybe/;
+use Syntax::Keyword::Gather;
+use JSON::MaybeXS qw/encode_json/;
+
+has logger_config => (
+    is => 'ro',
+    isa => ArrayRef,
+    default => sub {
+        [
+            screen => {
+                maxlevel => 'debug',
+                message_layout => '%m',
+            },
+        ],
+    },
+);
 
 has logger => (
     is => 'ro',
+    lazy => 1,
     default => sub {
-        my $logger = Log::Handler->new;
-        $logger->add(
-            screen => {
-                maxlevel => 'debug',
-                minlevel => 'error',
-                message_layout => '%m',
-            },
-        );
+        my $logger = Log::Handler->new(@{ shift->logger_config });
         return $logger;
     },
 );
@@ -36,7 +45,7 @@ has graphviz_config => (
     lazy => 1,
     default => sub {
         my $self = shift;
-        my %label = $self->single_result_source
+        my %label = $self->has_wanted_result_sources
                   ? ()
                   : (label => sprintf ('%s (version %s) rendered by DBIx::Class::Visualizer %s.', ref $self->schema, $self->schema->schema_version, DateTime::Tiny->now->as_string))
                   ;
@@ -82,14 +91,20 @@ has result_sources => (
     is => 'rw',
     isa => ArrayRef,
     lazy => 1,
-    default => sub {
-        [shift->schema->sources],
-    },
+    init_arg => undef,
+    builder => 1,
 );
-has single_result_source => (
+sub _build_result_sources {
+    my $self = shift;
+
+    return $self->has_wanted_result_sources ? $self->wanted_result_sources : [$self->schema->sources];
+};
+has wanted_result_sources => (
     is => 'ro',
-    default => 0,
+    isa => ArrayRef,
+    default => sub { [] },
 );
+
 has degrees_of_separation => (
     is => 'ro',
     default => 1,
@@ -97,75 +112,51 @@ has degrees_of_separation => (
 
 has skip_result_sources => (
     is => 'rw',
-    isa => Maybe[RegexpRef],
-    predicate => 1,
+    isa => ArrayRef,
+    default => sub { [] },
 );
-
 
 has added_relationships => (
     is => 'ro',
     default => sub { +{} },
 );
-has ordered_relationships => (
-    is => 'ro',
-    default => sub { [] },
-);
 
-around BUILDARGS => sub {
-    my $orig = shift;
-    my $class = shift;
-    my %args = @_;
-
-    # If we should display only one result source and the user has not passed single_result_source => 0, then single_result_source => 1.
-    if(exists $args{'result_sources'} && scalar @{ $args{'result_sources'} } && !exists $args{'single_result_source'}) {
-        $args{'single_result_source'} = 1;
-    }
-
-    return $class->$orig(%args);
-};
+sub has_wanted_result_sources { scalar @{ shift->wanted_result_sources }; }
+sub has_skip_result_sources   { scalar @{ shift->skip_result_sources }; }
 
 sub BUILD {
     my $self = shift;
-    my @sources = grep { my $regex = $self->skip_result_sources; !($self->has_skip_result_sources && m/$regex/) } @{ $self->result_sources };
+    my @sources = sort grep { my $result_source = $_; none { $result_source eq $_ } @{ $self->skip_result_sources } } @{ $self->result_sources };
 
-    $self->logger->debug('sources ', @sources);
-
-    if($self->single_result_source) {
+    if($self->has_wanted_result_sources) {
         for (1..$self->degrees_of_separation) {
-            say '->';
-            my @add_sources;
-            SOURCE:
-            for my $source_name (@sources) {
-                say "sources:    @sources";
-                say "-->       $source_name";
-                next SOURCE if $self->has_skip_result_sources && do { my $regex = $self->skip_result_sources; $source_name =~ m/$regex/; };
-                my $rs = $self->schema->resultset($source_name)->result_source;
 
-                RELATION:
-                for my $relation_name (sort $rs->relationships) {
-                    my $relation = $rs->relationship_info($relation_name);
-                    (my $other_source_name = $relation->{'class'}) =~ s{^.*?::Result::}{};
+            push @sources, gather {
+                SOURCE:
+                for my $source_name (@sources) {
+                    next SOURCE if $self->has_skip_result_sources && any { $source_name eq $_ } @{ $self->skip_result_sources };
+                    my $rs = $self->schema->resultset($source_name)->result_source;
 
-                    next RELATION if $self->has_skip_result_sources && do { my $regex = $self->skip_result_sources; $other_source_name =~ m/$regex/; };
-                    next RELATION if any { $other_source_name eq $_ } (@sources, @add_sources);
+                    RELATION:
+                    for my $relation_name (sort $rs->relationships) {
+                        my $relation = $rs->relationship_info($relation_name);
+                        (my $other_source_name = $relation->{'class'}) =~ s{^.*?::Result::}{};
 
-                    say "----->             $relation_name -> $other_source_name";
-                    push @add_sources, $other_source_name;
+                        next RELATION if $self->has_skip_result_sources && any { $other_source_name eq $_ } @{ $self->skip_result_sources };
+                        next RELATION if any { $other_source_name eq $_ } (@sources, gathered);
+                        take $other_source_name;
+                    }
                 }
-                say '';
-            }
-            push @sources, @add_sources;
+            };
         }
-        $self->result_sources(\@sources);
-    }
-    else {
-        @sources = sort @sources;
     }
 
-    foreach my $source_name (@sources) {
+    $self->result_sources(sort \@sources);
+
+    foreach my $source_name (@{ $self->result_sources }) {
         $self->add_node($source_name);
     }
-    foreach my $source_name (@sources) {
+    foreach my $source_name (@{ $self->result_sources }) {
         $self->add_edges($source_name);
     }
 }
@@ -188,139 +179,172 @@ sub svg {
         $el->remove if !length trim $el->text;
     });
 
-    # make some lines thinner
-    $dom->find('polygon:not([stroke-width])')->each(sub {
-      #  shift->attr('stroke-width', 0.4);
-    });
-    # remove attributes and set classes
-    $dom->find('.node polygon[fill="#fefefe"]')->each(sub {
-        my $el = shift;
-        delete $el->attr->{'fill'};
-        delete $el->attr->{'stroke'};
-        $el->attr(class => 'column_name');
-    });
-    $dom->find('.node polygon[fill="#dddfdd"]:not(:last-of-type)')->each(sub {
-        my $el = shift;
-        delete $el->attr->{'fill'};
-        delete $el->attr->{'stroke'};
-        $el->attr(class => 'table_name');
-    });
+    # Remove attributes and set classes on node polygons
     $dom->find('.node polygon:last-of-type')->each(sub {
         my $el = shift;
         delete $el->attr->{'fill'};
         delete $el->attr->{'stroke'};
         $el->attr(class => 'border');
     });
+    $dom->find('.node polygon[fill="#fefefe"]')->each(sub {
+        my $el = shift;
+        delete $el->attr->{'fill'};
+        delete $el->attr->{'stroke'};
+        $el->attr(class => 'column-name');
+    });
+    $dom->find('.node polygon[fill="#dddfdd"]')->each(sub {
+        my $el = shift;
+        delete $el->attr->{'fill'};
+        delete $el->attr->{'stroke'};
+        $el->attr(class => 'table-name');
+    });
+
+    # Remove and set attributes on texts
+    $dom->find('text')->each(sub {
+        my $text = shift;
+        delete $text->attr->{'font-family'};
+        delete $text->attr->{'font-size'};
+        $text->attr('data-is-primary' => 1) if delete $text->attr->{'font-weight'};
+        $text->attr('data-is-foreign' => 1) if delete $text->attr->{'text-decoration'};
+    });
     $dom->find('.node text:first-of-type')->each(sub {
         my $el = shift;
         delete $el->attr->{'fill'};
-        $el->attr->{'class'} = 'table_name';
+        $el->attr->{'class'} = 'table-name';
     });
-    $dom->find('.node text:not(.table_name)')->each(sub {
+    $dom->find('.node text:not(.table-name)')->each(sub {
         my $el = shift;
         delete $el->attr->{'fill'};
-        $el->attr(class => 'column_name');
+        $el->attr(class => 'column-name');
     });
 
-    # add data attributes to everything in nodes
+    # Add data attributes to everything in nodes
     $dom->find('.node')->each(sub {
         my $node = shift;
-        my $table_name = $node->at('text.table_name')->all_text;
+        my $table_name = $node->at('text.table-name')->all_text;
         $node->attr('data-table-name', $table_name);
 
-        $node->find('text.column_name')->each(sub {
+
+        $node->find('text.column-name')->each(sub {
             my $el = shift;
             $el->attr('data-column-name', $el->all_text);
             $el->previous->attr('data-column-name', $el->all_text); # background polygon
+
+            my $column_info = $self->schema->resultset($table_name)->result_source->column_info($el->all_text);
+
+            # this should instead remove all sub references
+            delete $column_info->{'_inflate_info'};
+            if(defined $column_info->{'default_value'}) {
+                $column_info->{'default_value'} = ref $column_info->{'default_value'}
+                                                ? ${ $column_info->{'default_value'} }
+                                                : qq{'$column_info->{'default_value'}'}
+                                                ;
+            }
+            $el->attr('data-column-info', encode_json($column_info));
+
         });
     });
-    # add data attributes to edges
-    $dom->find('.edge')->each(sub {
-        my $edge = shift;
-        my $title = $edge->at('title')->text;
+    # There might be a tiny <polygon.table-name> on top of the real <polygon.table-name> (used for padding during graphviz creation)
+    # We don't want it any more, we only want the last <polygon.table-name> in each .node
+    $dom->find('.node')->each(sub {
+        shift->find('polygon.table-name')->reverse->each(sub {
+            $_[0]->remove if $_[1] > 1;
+        });
+    });
+    # <polygon.table-name> leave a small gap to the .border that we don't want.
+    # Since the arrows overlap the default .border[stroke-width] the .border x-points
+    # are moved inwards by 0.5, thereby fixing both problems at once.
+    #   There is also a slightly larger gap between <.node polygon.table-name>
+    # and the top border created by a padding element removed above. Hence
+    # <.polygon.table-name> gets their two top y-points set to the .border top y-point.
+    #   And finally, there's a gap between <polygon.table-name>
+    # and the first <polygon.column-name>, also due to padding during creation.
+    # This is removed by setting <polygon.table-name> lower y-points to those of
+    # the first <polygon.column-name>.
+    $dom->find('.node polygon.border')->each(sub {
+        my $border = shift;
+        my $table_name_polygon = $border->parent->at('polygon.table-name');
+        my $column_name_polygon = $border->parent->at('polygon.column-name');
 
-        if($title =~ m{ ^ ([^:]+) : ([^&]+?) -> ([^:;]+) : (.+) $ }x) {
-            $edge->attr('data-origin-table', $1);
-            $edge->attr('data-origin-column', $2);
-            $edge->attr('data-destination-table', $3);
-            $edge->attr('data-destination-column', $4);
+        # Turn [points]  '6.5,-591.22 6.5,-662.22 158.5,-662.22 158.5,-591.22 6.5,-591.22'
+        # into           [{ x => 6.5, y => -591.22 }, ... ]
+        my $points_to_array = sub {
+            +{ x => shift, y => shift };
+        };
+        my $border_points      = [map { $points_to_array->(split /,/) } split / /, $border->attr('points') ];
+        my $table_name_points  = [map { $points_to_array->(split /,/) } split / /, $table_name_polygon->attr('points')];
+        my $column_name_points = [map { $points_to_array->(split /,/) } split / /, $column_name_polygon->attr('points')];
+
+        # 0: bottom left, 1: top left, 2: top right, 3: bottom right, 4: bottom left again
+        for my $point (1..4) {
+            $border_points->[$point]{'x'} += .5                               if any { $point == $_ } (0, 1, 4);
+            $border_points->[$point]{'x'} -= .5                               if any { $point == $_ } (2, 3);
+
+            $table_name_points->[$point]{'y'} = $column_name_points->[1]{'y'}  if any { $point == $_ } (0, 3, 4);
+            $table_name_points->[$point]{'y'} = $border_points->[$point]{'y'}  if any { $point == $_ } (1, 2);
         }
+        $border->attr(points => join ' ', map { "$_->{'x'},$_->{'y'}" } @{ $border_points });
+        $table_name_polygon->attr(points => join ' ', map { "$_->{'x'},$_->{'y'}" } @{ $table_name_points });
     });
 
-    # make it a bit lighter
-    $dom->find('[fill="black"]')->each(sub { shift->attr('fill', '#444444') });
-    $dom->find('[stroke="black"]')->each(sub { shift->attr('stroke', '#444444') });
+    # Make edges aware of what they are connecting
+    $dom->find('.edge')->each(sub {
+        my $edge = shift;
+        my $title = $edge->at('title');
+
+        if($title->text =~ m{ ^ ([^:]+) : ([^-]+?) -> ([^:;]+) : (.+) $ }x) {
+            my $origin_table = $1;
+            my $origin_column = $2;
+            my $destination_table = $3;
+            my $destination_column = $4;
+
+            # Restore table names. See also node_name()
+            $origin_table =~ s{__}{::}g;
+            $destination_table =~ s{__}{::}g;
+            $edge->attr('data-origin-table', $origin_table);
+            $edge->attr('data-origin-column', $origin_column);
+            $edge->attr('data-destination-table', $destination_table);
+            $edge->attr('data-destination-column', $destination_column);
+            $title->content("$origin_table.$origin_column -> $destination_table.$destination_column");
+        }
+    });
+    # cleanup edges
+    $dom->find('.edge path, .edge polygon, .edge polyline, .edge ellipse')->each(sub {
+        my $el = shift;
+        delete $el->attr->{'stroke'};
+        delete $el->attr->{'stroke-width'};
+        delete $el->attr->{'fill'};
+    });
+    # There are annoying gaps in edges if the edge is connected to the right side of a node
+    # and the relation is a one-to-anything (in other words: the 'crow' arrow type works and
+    # the 'tee' doesn't).
+    # Replace the right point of the polyline with the first point of the path, after also
+    # adding 0.5 to the x value to ensure overlap.
+    $dom->find('.edge')->each(sub {
+        my $edge = shift;
+        my $line = $edge->children('title + path + polyline')->first;
+        return if !defined $line;
+        my $pathd = $line->previous->attr('d');
+
+        # path: M168.679,-630.646C282.32,-605.396 149.41,-142.338...
+        # line: 158.5,-631.72 163.472,-631.195
+        return if $pathd !~ m{^M (?<x>[\d.-]+) , (?<y>[\d.-]+) }x;
+
+        my @points = split m/\s/, $line->attr('points');
+        $points[-1] = join ',' => ($+{'x'} + 0.5, $+{'y'});
+        $line->attr(points => join ' ', @points);
+    });
+
 
     # Fix the graph name
     my $schema_name = ref $self->schema;
     $dom->find('title')->first(content => $schema_name);
 
-    # Cleanup edge alt texts, turn:
-    # tablename:columnname->tablename:columnname
-    # into
-    # tablename.columnname -> tablename.columnname
-    $dom->find('title')->each(sub {
-        my $el = shift;
-        my $text = $el->text;
+    my $rendered = $dom->to_string;
+    $rendered =~ s{\n+}{\n}g;
 
-        $text =~ s{ ^ ([^:]+) : ([^&]+?) -> ([^:;]+) : (.+) $ }{$1.$2 -> $3.$4}x;
-        $el->content($text);
-    });
+    return $rendered;
 
-    $dom->find('.edge path')->each(sub {
-        my $el = shift;
-        delete $el->attr->{'stroke'};
-        delete $el->attr->{'stroke-width'};
-    });
-
-    # Place a copy of all edges on top. Useful to show relationship type for the hovered relationship
-    # on keys with many relationships.
-    my $root = $dom->at('g')->children('g')->last;
-    if(0) {
-        $dom->find('g.edge')->each(sub {
-            my $el = shift;
-            my $new_content = $el->to_string;
-
-            # The edge shown on hover
-            {
-                $root->append($new_content);
-                my $new_el = $dom->find('#'.$el->attr('id'))->last;
-                $new_el->attr({
-                    id => 'hovered_' . $el->attr('id'),
-                    class => 'hovered_edge',
-                    style => 'display: none;',
-                });
-                $new_el->children->each(sub {
-                    my $elem = shift;
-                    $elem->attr(stroke => '#ff00ff');
-                });
-                $new_el->children('polyline, polygon')->each(sub {
-                    my $elem = shift;
-                    $elem->attr(fill => '#ff00ff');
-                });
-            }
-
-            # The edge shown on column hover
-            {
-                $root->append($new_content);
-                my $new_el = $dom->find('#'.$el->attr('id'))->last;
-                $new_el->attr({
-                    id => 'hovercolumn_' . $el->attr('id'),
-                    class => 'hovercolumn_edge',
-                    style => 'display: none;',
-                });
-                $new_el->children->each(sub {
-                    my $elem = shift;
-                    $elem->attr(stroke => '#44aa44');
-                });
-                $new_el->children('polyline, polygon')->each(sub {
-                    my $elem = shift;
-                    $elem->attr(fill => '#11ff66');
-                });
-            }
-        });
-    }
-    return $dom->to_string;
 }
 
 sub add_node {
@@ -344,11 +368,12 @@ sub add_node {
             is_primary => $is_primary,
             is_foreign => $is_foreign,
             name => $column,
+            info => $rs->column_info($column),
         };
     }
     $self->graph->add_node(
         name => $node_name,
-        label => $self->create_label_html($node_name, $label_data, { mark_label => $self->single_result_source && $source_name eq $self->result_sources->[0] ? 1 : 0 }),
+        label => $self->create_label_html($node_name, $label_data),
         margin => 0.01,
     );
 }
@@ -360,13 +385,14 @@ sub add_edges {
     my $rs = $self->schema->resultset($source_name)->result_source;
 
     RELATION:
-    for my $relation_name (sort $rs->relationships) {
+    for my $relation_name ($self->schema->resultset($source_name)->result_source->relationships) {
         my $node_name = $self->node_name($source_name);
-        $self->logger->info('relation name: ' . $relation_name);
+
         my $relation = $rs->relationship_info($relation_name);
+        $relation->{'_name'} = $relation_name;
         (my $other_source_name = $relation->{'class'}) =~ s{^.*?::Result::}{};
 
-        next RELATION if $self->has_skip_result_sources && do { my $regex = $self->skip_result_sources; $other_source_name =~ m/$regex/; };
+        next RELATION if $self->has_skip_result_sources && any { $other_source_name eq $_ } @{ $self->skip_result_sources };
         my $other_node_name = $self->node_name($other_source_name);
 
         my $other_rs = $self->schema->resultset($other_source_name)->result_source;
@@ -381,14 +407,16 @@ sub add_edges {
 
             # When we are rendering *part* of the schema, result_sources() doesn't contain all result sources in the schema, but only those we will display.
             # If the current relation points to a result source outside the wanted degrees_of_separation, we are not interested.
-            next RELATION if $self->single_result_source && none { $other_source_name eq $_ } @{ $self->result_sources };
+            next RELATION if $self->has_wanted_result_sources && none { $other_source_name eq $_ } @{ $self->result_sources };
 
             $other_relation = $relation_to_attempt;
             $other_relation->{'_name'} = $other_relation_name;
         }
 
-        if(!defined $other_relation) {
-            warn "! No reverse relationship $source_name <-> $other_source_name";
+        # Check for missing reverse relations, but only if we are displaying the whole schema.
+        if(!$self->has_wanted_result_sources && !defined $other_relation) {
+            $self->logger->info("! No reverse relationship $source_name <$relation_name> <-> $other_source_name");
+
             next RELATION;
         }
 
@@ -405,16 +433,19 @@ sub add_edges {
                              ;
 
         # Have we already added the edge from the reversed direction?
+     #   say "       ! but not really " if exists $self->added_relationships->{"$other_node_name.$headport-->$node_name.$tailport"};
         next RELATION if exists $self->added_relationships->{"$other_node_name.$headport-->$node_name.$tailport"};
 
 
+        # Since we are messing with source_name below, we need to not overwrite $source_name since that would
+        # interfere with the next looping.
+       # my $from_source_name = $source_name;
+
         # When displaying a single result source, and its closest relations, place some relations to the left and some to the right.
         # The placement is dependent on the direction of the connection. Hence: invert some relations.
-        if($self->single_result_source) {
-            if(any { $_ eq $self->get_relation_type($relation) } (qw/belongs_to has_one/)) {
-                my $placeholder_source_name = $source_name;
-                $source_name = $other_source_name;
-                $other_source_name = $placeholder_source_name;
+        if(   $self->has_wanted_result_sources
+           && any { $source_name eq $_ || $other_source_name eq $_} @{ $self->wanted_result_sources }
+           && any { $_ eq $self->get_relation_type($relation) } (qw/belongs_to has_one/)) {
 
                 my $placeholder_node = $node_name;
                 $node_name = $other_node_name;
@@ -427,9 +458,8 @@ sub add_edges {
                 my $placeholder_port = $headport;
                 $headport = $tailport;
                 $tailport = $placeholder_port;
-            }
         }
-
+        $self->logger->debug("adds edge $node_name.$tailport -> $other_node_name.$headport");
         $self->graph->add_edge(
             from => $node_name,
             tailport => $tailport,
@@ -445,10 +475,6 @@ sub add_edges {
         $self->added_relationships->{ "$node_name.$tailport-->$other_node_name.$headport" } = 1;
         $self->added_relationships->{ "$other_node_name.$headport-->$node_name.$tailport" } = 1;
 
-        push @{ $self->ordered_relationships } => (
-            "$node_name-->$other_node_name",
-            "$other_node_name-->$node_name"
-        );
     }
 }
 
@@ -458,15 +484,17 @@ sub get_relation_type {
 
     my $accessor = $relation->{'attrs'}{'accessor'};
     my $is_depends_on = $relation->{'attrs'}{'is_depends_on'};
-    my $join_type = exists $relation->{'attrs'}{'join_type'} ? lc $relation->{'attrs'}{'join_type'} : '';
+    my $join_type = exists $relation->{'attrs'}{'join_type'} ? lc $relation->{'attrs'}{'join_type'} : 0;
 
-    my $has_many   = $accessor eq 'multi'  && !$is_depends_on && $join_type eq 'left' ? 1 : 0;
-    my $belongs_to = $accessor eq 'single' && $is_depends_on  && $join_type eq ''     ? 1 : 0;
-    my $might_have = $accessor eq 'single' && !$is_depends_on && $join_type eq 'left' ? 1 : 0;
+    my $has_many   = $accessor eq 'multi'  && !$is_depends_on &&  $join_type eq 'left' ? 1 : 0;
+    my $might_have = $accessor eq 'single' && !$is_depends_on &&  $join_type eq 'left' ? 1 : 0;
+    my $belongs_to = $accessor eq 'single' &&  $is_depends_on && !$join_type           ? 1 : 0;
+    my $has_one    = $accessor eq 'single' && !$is_depends_on && !$join_type           ? 1 : 0;
 
     return $has_many   ? 'has_many'
          : $belongs_to ? 'belongs_to'
          : $might_have ? 'might_have'
+         : $has_one    ? 'has_one'
          :               'unknown'
          ;
 }
@@ -476,10 +504,11 @@ sub get_arrow_type {
 
     my $relation_type = $self->get_relation_type($relation);
 
-    return $relation_type eq 'has_many'   ? join ('' => qw/crow none odot/)
-         : $relation_type eq 'belongs_to' ? join ('' => qw/none tee/)
-         : $relation_type eq 'might_have' ? join ('' => qw/none tee none odot/)
-         :                                  join ('' => qw/dot dot dot/)
+    return $relation_type eq 'has_many'   ? join ('', qw/crow none odot/)
+         : $relation_type eq 'belongs_to' ? join ('', qw/none tee/)
+         : $relation_type eq 'might_have' ? join ('', qw/none tee none odot/)
+         : $relation_type eq 'has_one'    ? join ('', qw/vee/)
+         :                                  join ('', qw/dot dot dot/)
          ;
 }
 sub get_port_compass {
@@ -487,16 +516,18 @@ sub get_port_compass {
     my $relation = shift;
     my $is_origin = shift;
 
-    return '' if !$self->single_result_source;
+    return '' if !$self->has_wanted_result_sources;
     my $relation_type = $self->get_relation_type($relation);
 
     return $relation_type eq 'has_many'   ? $is_origin ? ':e' : ':w'
          : $relation_type eq 'belongs_to' ? $is_origin ? ':w' : ':e'
          : $relation_type eq 'might_have' ? $is_origin ? ':w' : ':e'
+         : $relation_type eq 'has_one'    ? $is_origin ? ':e' : ':w'
          :                                  ''
          ;
 }
 
+# Port names can't have semicolons in them.
 sub node_name {
     my $self = shift;
     my $node_name = shift;
