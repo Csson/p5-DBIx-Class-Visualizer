@@ -509,17 +509,20 @@ __END__
 =head1 SYNOPSIS
 
     use DBIx::Class::Visualizer;
-    use A::DBIx::Class::Schema;
+    use The::DBIxClassSchema;
 
-    my $schema = A::DBIx::Class::Schema->connect;
-    my $svg = DBIx::Class::Visualizer->new->svg;
+    my $schema = The::DBIxClassSchema->connect;
+    my $svg = DBIx::Class::Visualizer->new(schema => $schema)->svg;
 
 =head1 DESCRIPTION
 
-DBIx::Class::Visualizer is a L<GraphViz2> renderer for L<DBIx::Class> schemata.
+DBIx::Class::Visualizer is a L<GraphViz2> renderer for L<DBIx::Class> schemas. It is designed to be used as a backend to web applications that
+can display the rendered graph in a more user friendly way. See L<Mojolicious::Plugin::DbicSchemaViewer>.
 
-On the relatively small schemata (about twenty result classes) that I have tried it on it produces reasonably readable graphs. See C<example/visualized.svg> for a
-simple example (also available on L<Github|http://htmlpreview.github.io/?https://github.com/Csson/p5-DBIx-Class-Visualizer/blob/master/example/visualized.svg>).
+=head1 STATUS
+
+Backwards compatability between even minor releases is currently not a goal. That said, the public interface is small and most
+breaking changes are likely to be in L</transformed_svg>.
 
 =head1 ATTRIBUTES
 
@@ -527,23 +530,49 @@ simple example (also available on L<Github|http://htmlpreview.github.io/?https:/
 
 Required. An instance of a L<DBIx::Class::Schema> class.
 
-=head2 graphviz_config
+=head2 logger_conf
 
-Optional hashref. This hashref is passed to the L<GraphViz2> constructor. Set this if the defaults don't work. Setting this will replace the defaults.
+Optional array reference. L<GraphViz2> uses L<Log::Handler>, so this distribution does that too. By default it noisily prints to screen. Not used if C<logger> is set.
+
+=head2 logger
+
+Optional. An instance of L<Log::Handler>.
+
+=head2 wanted_result_source_names
+
+Optional. An array reference consisting of result source names (without the .*::Result:: prefix) you wish to include in the output. This can
+be useful to focus on a small part of large schemas.
+
+If it is not set all result sources will be rendered (minus L</skip_result_source_names>).
+
+=head2 skip_result_source_names
+
+Optional. An array reference consisting of result source names (without the .*::Result:: prefix) you wish to not include in the output.
+
+=head2 degrees_of_separation
+
+Optional. A non-negative integer that is used together with L</wanted_result_source_names>. In addition to the wanted result sources, this attribute
+defines how many relationship steps should be followed to other result sources that also should be included in the output.
+
+Default is C<1>.
+
+=head2 graphviz_conf
+
+Optional hashref. This hashref is passed to the L<GraphViz2> constructor. The output from L</transformed_svg> is adapted to the default settings, so
+using these to together might cause a less usable svg document.
 
 Won't be used if you pass C<graph> to the constructor.
 
 =head2 graph
 
-Optional. A L<GraphViz2> object. Set this if you need to use an already constructed graph.
+Optional. A L<GraphViz2> object. Pass this if you need to use an already constructed graph.
 
-It can be useful if you, for example, wishes to see the arguments to the dot renderer:
+After L</new> has run it can be useful if you, for example, wishes to see the arguments to the dot renderer:
 
     my $visualizer = DBIx::Class::Visualizer->new(schema => $schema);
     my $svg = $visualizer->svg;
 
     my $dotfile = $visualizer->graph->dot_input;
-
 
 =head1 METHODS
 
@@ -553,7 +582,7 @@ The constructor.
 
 =head2 svg
 
-Takes no arguments, and returns the rendered svg document as a string.
+Takes no arguments, and returns the graph as an svg string.
 
 =head2 run
 
