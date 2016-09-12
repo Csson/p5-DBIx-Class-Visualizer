@@ -325,11 +325,13 @@ sub transformed_svg {
             my $destination_column = $4;
 
             # Restore table names. See also node_name()
-            my $relation_type = $self->result_handler($origin_table)->get_relation_between($origin_column, $destination_table, $destination_column)->relation_type;
-            my $reverse_relation_type = $self->result_handler($destination_table)->get_relation_between($destination_column, $origin_table, $origin_column)->relation_type;
-            $edge->attr(id => sprintf '%s-%s--%s-%s', $origin_table, $origin_column, $destination_table, $destination_column);
             $origin_table =~ s{__}{::}g;
             $destination_table =~ s{__}{::}g;
+
+            my $relation_type = $self->result_handler($origin_table)->get_relation_between($origin_column, $destination_table, $destination_column)->relation_type;
+            my $reverse_relation_type = $self->result_handler($destination_table)->get_relation_between($destination_column, $origin_table, $origin_column)->relation_type;
+
+            $edge->attr(id => sprintf '%s-%s--%s-%s', $origin_table, $origin_column, $destination_table, $destination_column);
             $edge->attr('data-origin-table', $origin_table);
             $edge->attr('data-origin-column', $origin_column);
             $edge->attr('data-destination-table', $destination_table);
