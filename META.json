@@ -119,7 +119,7 @@
          },
          "requires" : {
             "DateTime::Tiny" : "1.06",
-            "GraphViz2" : "2.38",
+            "GraphViz2" : "2.42",
             "JSON::MaybeXS" : "1.003003",
             "List::Util" : "1.45",
             "Log::Handler" : "0.84",

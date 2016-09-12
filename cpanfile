@@ -1,8 +1,8 @@
-# This file was auto-generated from iller.yaml by Dist::Iller on 2016-09-12 11:59:22 UTC.
+# This file was auto-generated from iller.yaml by Dist::Iller on 2016-09-12 12:15:48 UTC.
 
 on runtime => sub {
     requires 'DateTime::Tiny' => '1.06';
-    requires 'GraphViz2' => '2.38';
+    requires 'GraphViz2' => '2.42';
     requires 'JSON::MaybeXS' => '1.003003';
     requires 'List::Util' => '1.45';
     requires 'Log::Handler' => '0.84';

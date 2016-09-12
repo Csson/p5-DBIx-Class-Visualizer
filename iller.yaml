@@ -16,7 +16,7 @@ prereqs:
   runtime:
     requires:
       - perl: 5.010001
-      - GraphViz2: 2.38
+      - GraphViz2: 2.42
       - List::Util
       - DateTime::Tiny: 1.06
       - Moo: 2.00
@@ -36,7 +36,7 @@ plugins:
   - +config: Author::CSSON
 
   - +extend_plugin: TravisYML
-    perl_version: 5.10 5.14 5.18 5.20 5.22
+   # perl_version: 5.10 5.14 5.18 5.20 5.22
     sudo: 1
     post_before_install:
      - sudo apt-get update -qq
