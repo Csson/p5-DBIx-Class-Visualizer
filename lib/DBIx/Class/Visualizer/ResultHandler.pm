@@ -103,7 +103,7 @@ sub _build_relations {
             RELATION:
             for my $relation_name (@relationship_names) {
                 my $relation = $self->rs->relationship_info($relation_name);
-                next RELATION if ref $relation->{'cond'} ne 'HASH' && scalar keys %{ $relation->{'cond'} } != 1;
+                next RELATION if ref $relation->{'cond'} ne 'HASH' || scalar keys %{ $relation->{'cond'} } != 1;
 
                 take(DBIx::Class::Visualizer::Relation->new(origin_table => $self->name, relation => $relation));
             }
