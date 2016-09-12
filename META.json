@@ -114,11 +114,20 @@
          }
       },
       "runtime" : {
+         "recommends" : {
+            "Mojolicious" : "6.0"
+         },
          "requires" : {
             "DateTime::Tiny" : "1.06",
             "GraphViz2" : "2.38",
+            "JSON::MaybeXS" : "1.003003",
             "List::Util" : "1.45",
+            "Log::Handler" : "0.84",
             "Moo" : "2.00",
+            "PerlX::Maybe" : "1.001",
+            "ReadonlyX" : "1.03",
+            "Syntax::Keyword::Gather" : "1.002000",
+            "Types::Standard" : "1.000005",
             "perl" : "5.010001"
          }
       },
@@ -138,6 +147,18 @@
    "provides" : {
       "DBIx::Class::Visualizer" : {
          "file" : "lib/DBIx/Class/Visualizer.pm",
+         "version" : "0.0101"
+      },
+      "DBIx::Class::Visualizer::Column" : {
+         "file" : "lib/DBIx/Class/Visualizer/Column.pm",
+         "version" : "0.0101"
+      },
+      "DBIx::Class::Visualizer::Relation" : {
+         "file" : "lib/DBIx/Class/Visualizer/Relation.pm",
+         "version" : "0.0101"
+      },
+      "DBIx::Class::Visualizer::ResultHandler" : {
+         "file" : "lib/DBIx/Class/Visualizer/ResultHandler.pm",
          "version" : "0.0101"
       }
    },
@@ -450,7 +471,7 @@
             "class" : "Dist::Zilla::Plugin::Git::Contributors",
             "config" : {
                "Dist::Zilla::Plugin::Git::Contributors" : {
-                  "git --version" : "1.9.1",
+                  "git --version" : "2.9.3",
                   "include_authors" : 0,
                   "include_releaser" : 1,
                   "order_by" : "name",
@@ -768,6 +789,17 @@
                }
             },
             "name" : "RuntimeRequires",
+            "version" : "6.007"
+         },
+         {
+            "class" : "Dist::Zilla::Plugin::Prereqs",
+            "config" : {
+               "Dist::Zilla::Plugin::Prereqs" : {
+                  "phase" : "runtime",
+                  "type" : "recommends"
+               }
+            },
+            "name" : "RuntimeRecommends",
             "version" : "6.007"
          },
          {

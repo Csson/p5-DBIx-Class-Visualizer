@@ -8,27 +8,31 @@ DBIx::Class::Visualizer - Visualize a DBIx::Class schema
     <a href="https://travis-ci.org/Csson/p5-DBIx-Class-Visualizer"><img src="https://api.travis-ci.org/Csson/p5-DBIx-Class-Visualizer.svg?branch=master" alt="Travis status" /></a>
     <a href="http://cpants.cpanauthors.org/release/CSSON/DBIx-Class-Visualizer-0.0101"><img src="http://badgedepot.code301.com/badge/kwalitee/CSSON/DBIx-Class-Visualizer/0.0101" alt="Distribution kwalitee" /></a>
     <a href="http://matrix.cpantesters.org/?dist=DBIx-Class-Visualizer%200.0101"><img src="http://badgedepot.code301.com/badge/cpantesters/DBIx-Class-Visualizer/0.0101" alt="CPAN Testers result" /></a>
+    <img src="https://img.shields.io/badge/coverage-90.0%-yellow.svg" alt="coverage 90.0%" />
     </p>
 </div>
 
 # VERSION
 
-Version 0.0101, released 2016-09-06.
+Version 0.0101, released 2016-09-12.
 
 # SYNOPSIS
 
     use DBIx::Class::Visualizer;
-    use A::DBIx::Class::Schema;
+    use The::DBIxClassSchema;
 
-    my $schema = A::DBIx::Class::Schema->connect;
-    my $svg = DBIx::Class::Visualizer->new->svg;
+    my $schema = The::DBIxClassSchema->connect;
+    my $svg = DBIx::Class::Visualizer->new(schema => $schema)->svg;
 
 # DESCRIPTION
 
-DBIx::Class::Visualizer is a [GraphViz2](https://metacpan.org/pod/GraphViz2) renderer for [DBIx::Class](https://metacpan.org/pod/DBIx::Class) schemata.
+DBIx::Class::Visualizer is a [GraphViz2](https://metacpan.org/pod/GraphViz2) renderer for [DBIx::Class](https://metacpan.org/pod/DBIx::Class) schemas. It is designed to be used as a backend to web applications that
+can display the rendered graph in a more user friendly way. See [Mojolicious::Plugin::DbicSchemaViewer](https://metacpan.org/pod/Mojolicious::Plugin::DbicSchemaViewer).
 
-On the relatively small schemata (about twenty result classes) that I have tried it on it produces reasonably readable graphs. See `example/visualized.svg` for a
-simple example (also available on [Github](http://htmlpreview.github.io/?https://github.com/Csson/p5-DBIx-Class-Visualizer/blob/master/example/visualized.svg)).
+# STATUS
+
+Backwards compatability between even minor releases is currently not a goal. That said, the public interface is small and most
+breaking changes are likely to be in ["transformed\_svg"](#transformed_svg).
 
 # ATTRIBUTES
 
@@ -36,17 +40,44 @@ simple example (also available on [Github](http://htmlpreview.github.io/?https:/
 
 Required. An instance of a [DBIx::Class::Schema](https://metacpan.org/pod/DBIx::Class::Schema) class.
 
-## graphviz\_config
+## logger\_conf
 
-Optional hashref. This hashref is passed to the [GraphViz2](https://metacpan.org/pod/GraphViz2) constructor. Set this if the defaults don't work. Setting this will replace the defaults.
+Optional array reference. [GraphViz2](https://metacpan.org/pod/GraphViz2) uses [Log::Handler](https://metacpan.org/pod/Log::Handler), so this distribution does that too. By default it noisily prints to screen. Not used if `logger` is set.
+
+## logger
+
+Optional. An instance of [Log::Handler](https://metacpan.org/pod/Log::Handler).
+
+## wanted\_result\_source\_names
+
+Optional. An array reference consisting of result source names (without the .\*::Result:: prefix) you wish to include in the output. This can
+be useful to focus on a small part of large schemas.
+
+If it is not set all result sources will be rendered (minus ["skip\_result\_source\_names"](#skip_result_source_names)).
+
+## skip\_result\_source\_names
+
+Optional. An array reference consisting of result source names (without the .\*::Result:: prefix) you wish to not include in the output.
+
+## degrees\_of\_separation
+
+Optional. A non-negative integer that is used together with ["wanted\_result\_source\_names"](#wanted_result_source_names). In addition to the wanted result sources, this attribute
+defines how many relationship steps should be followed to other result sources that also should be included in the output.
+
+Default is `1`.
+
+## graphviz\_conf
+
+Optional hashref. This hashref is passed to the [GraphViz2](https://metacpan.org/pod/GraphViz2) constructor. The output from ["transformed\_svg"](#transformed_svg) is adapted to the default settings, so
+using these to together might cause a less usable svg document.
 
 Won't be used if you pass `graph` to the constructor.
 
 ## graph
 
-Optional. A [GraphViz2](https://metacpan.org/pod/GraphViz2) object. Set this if you need to use an already constructed graph.
+Optional. A [GraphViz2](https://metacpan.org/pod/GraphViz2) object. Pass this if you need to use an already constructed graph.
 
-It can be useful if you, for example, wishes to see the arguments to the dot renderer:
+After ["new"](#new) has run it can be useful if you, for example, wishes to see the arguments to the dot renderer:
 
     my $visualizer = DBIx::Class::Visualizer->new(schema => $schema);
     my $svg = $visualizer->svg;
@@ -61,13 +92,71 @@ The constructor.
 
 ## svg
 
-Takes no arguments, and returns the rendered svg document as a string.
+Takes no arguments, and returns the graph as an svg string.
 
 ## run
 
 A shortcut for ["run" in GraphViz2](https://metacpan.org/pod/GraphViz2#run):
 
     DBIx::Class::Visualizer->new(schema => $schema)->run(output_file => 'myschema.png', format => 'png');
+
+## transformed\_svg
+
+Takes no arguments. Returns an svg string that is more useful than that from ["svg"](#svg) Using this method requires [Mojolicious](https://metacpan.org/pod/Mojolicious).
+
+This method improves the svg generated by [graphviz](http://graphviz.org/) in several ways:
+
+- All layout attributes (eg. `fill`, `stroke`, `font-family`) are removed so that styling can be done using css.
+- There are occasional minor gaps between the various elements in edges, these are removed (or at least reduced).
+- This distribution adds some padding between texts and borders to avoid overlapping. These are removed so that no unnecessary elements remain.
+- All edges, nodes and column name elements get relevant values for their id attributes.
+- Several `data-` attributes are added to edges, nodes and column attributes containing a lot of information about the schema.
+
+As an example, this is a column element as rendered by `graphviz` (whitespace added for readability:
+
+    <text text-anchor="start"
+           x="700.391"
+           y="-17.9"
+           font-family="Helvetica,sans-Serif"
+           font-weight="bold"
+           font-size="10.00"
+           fill="#222222">a_column_id</text>
+
+After passing through `transformed_svg` the same column looks like this:
+
+    <text id="column-TableName-a_column_id"
+          class="column-name"
+          y="-17.9"
+          x="700.391"
+          text-anchor="start"
+          data-is-primary="1"
+          data-column-name="a_column_id"
+          data-column-info="{
+            "extra": {},
+            "is_nullable": 0,
+            "is_foreign_key": 0,
+            "is_numeric": 1,
+            "name": "a_column_id",
+            "is_auto_increment": 1,
+            "relations":[
+                {
+                    "origin_column": "a_column_id",
+                    "cascade_delete": 1,
+                    "destination_column": "a_column_id",
+                    "origin_table": "TableName",
+                    "relation_type": "has_many",
+                    "destination_table": "AnotherTableName"
+                },
+                ...
+            ],
+            "data_type": "integer",
+            "is_primary_key": 1
+          }">a_column_id</text>
+
+The `data-column-info` attribute is a json object that is directly usable by something like jQuery:
+
+    # has_many
+    $('#column-TableName-a_column_id').data('column-info').relations[0].relation_type;
 
 # SEE ALSO
 

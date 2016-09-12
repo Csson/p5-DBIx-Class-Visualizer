@@ -1,11 +1,20 @@
-# This file was auto-generated from iller.yaml by Dist::Iller on 2016-09-04 16:58:49 UTC.
+# This file was auto-generated from iller.yaml by Dist::Iller on 2016-09-12 11:44:46 UTC.
 
 on runtime => sub {
     requires 'DateTime::Tiny' => '1.06';
     requires 'GraphViz2' => '2.38';
+    requires 'JSON::MaybeXS' => '1.003003';
     requires 'List::Util' => '1.45';
+    requires 'Log::Handler' => '0.84';
     requires 'Moo' => '2.00';
+    requires 'PerlX::Maybe' => '1.001';
+    requires 'ReadonlyX' => '1.03';
+    requires 'Syntax::Keyword::Gather' => '1.002000';
+    requires 'Types::Standard' => '1.000005';
     requires 'perl' => '5.010001';
+};
+on runtime => sub {
+    recommends 'Mojolicious' => '6.0';
 };
 on test => sub {
     requires 'ExtUtils::MakeMaker' => '0';

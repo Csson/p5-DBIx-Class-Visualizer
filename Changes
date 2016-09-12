@@ -9,12 +9,14 @@ Revision history for DBIx-Class-Visualizer
  [Documentation]
 
  [Enhancements]
+ - Can transform the rendered svg document so that it is much more useful in a web application.
 
  [New Features]
 
  [Other Changes]
 
  [Requirements]
+ - Mojolicious is required to make use of the improved svg transformation.
 
  [Stats & Dependency Changes]
 

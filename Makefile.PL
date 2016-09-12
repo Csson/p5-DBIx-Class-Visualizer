@@ -19,8 +19,14 @@ my %WriteMakefileArgs = (
   "PREREQ_PM" => {
     "DateTime::Tiny" => "1.06",
     "GraphViz2" => "2.38",
+    "JSON::MaybeXS" => "1.003003",
     "List::Util" => "1.45",
-    "Moo" => "2.00"
+    "Log::Handler" => "0.84",
+    "Moo" => "2.00",
+    "PerlX::Maybe" => "1.001",
+    "ReadonlyX" => "1.03",
+    "Syntax::Keyword::Gather" => "1.002000",
+    "Types::Standard" => "1.000005"
   },
   "TEST_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0,
@@ -43,9 +49,15 @@ my %FallbackPrereqs = (
   "GraphViz2" => "2.38",
   "IO::Handle" => 0,
   "IPC::Open3" => 0,
+  "JSON::MaybeXS" => "1.003003",
   "List::Util" => "1.45",
+  "Log::Handler" => "0.84",
   "Moo" => "2.00",
-  "Test::More" => "0.96"
+  "PerlX::Maybe" => "1.001",
+  "ReadonlyX" => "1.03",
+  "Syntax::Keyword::Gather" => "1.002000",
+  "Test::More" => "0.96",
+  "Types::Standard" => "1.000005"
 );
 
 
