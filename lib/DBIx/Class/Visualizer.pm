@@ -18,33 +18,32 @@ use JSON::MaybeXS qw/encode_json/;
 use PerlX::Maybe;
 use DBIx::Class::Visualizer::ResultHandler;
 
-has logger_config => (
+has logger_conf => (
     is => 'ro',
     isa => ArrayRef,
+    lazy => 1,
     default => sub {
         [
             screen => {
                 maxlevel => 'debug',
+                minlevel => 'emerg',
                 message_layout => '%m',
             },
-        ],
+        ];
     },
 );
-
 has logger => (
     is => 'ro',
     lazy => 1,
-    default => sub { Log::Handler->new(@{ shift->logger_config }) },
+    default => sub {
+        Log::Handler->new(@{ shift->logger_conf })
+    },
 );
-has graphviz_config => (
+has graphviz_conf => (
     is => 'ro',
     lazy => 1,
     default => sub {
         my $self = shift;
-        my %label = $self->has_wanted_result_source_names
-                  ? ()
-                  : (label => sprintf ('%s (version %s) rendered by DBIx::Class::Visualizer %s.', ref $self->schema, $self->schema->schema_version, DateTime::Tiny->now->as_string))
-                  ;
 
         return +{
             global => {
@@ -56,7 +55,6 @@ has graphviz_config => (
             graph => {
                 rankdir => 'LR',
                 splines => 'true',
-                %label,
                 fontname => 'helvetica',
                 fontsize => 7,
                 labeljust => 'l',
@@ -77,7 +75,7 @@ has graph => (
     handles => [qw/run/],
 );
 sub _build_graph {
-    return GraphViz2->new(shift->graphviz_config);
+    return GraphViz2->new(shift->graphviz_conf);
 }
 has schema => (
     is => 'ro',
