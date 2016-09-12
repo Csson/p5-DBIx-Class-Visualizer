@@ -253,7 +253,11 @@ sub transformed_svg {
             my $column_name = $el->all_text;
             $el->attr('data-column-name', $column_name);
             $el->attr(id => 'column-'.$result_handler->node_name . '-' . $column_name);
-            $el->previous->attr('data-column-name', $column_name); # background polygon
+            my $polygon = $el->previous;
+
+            # background polygon
+            $polygon->attr('data-column-name', $column_name);
+            $polygon->attr(id => 'bg-column-'.$result_handler->node_name . '-' . $column_name);
 
             $el->attr('data-column-info', encode_json($result_handler->get_column($column_name)->TO_JSON));
         });
@@ -322,6 +326,8 @@ sub transformed_svg {
             my $destination_column = $4;
 
             # Restore table names. See also node_name()
+            my $relation_type = $self->result_handler($origin_table)->get_relation_between($origin_column, $destination_table, $destination_column)->relation_type;
+            my $reverse_relation_type = $self->result_handler($destination_table)->get_relation_between($destination_column, $origin_table, $origin_column)->relation_type;
             $edge->attr(id => sprintf '%s-%s--%s-%s', $origin_table, $origin_column, $destination_table, $destination_column);
             $origin_table =~ s{__}{::}g;
             $destination_table =~ s{__}{::}g;
@@ -329,7 +335,7 @@ sub transformed_svg {
             $edge->attr('data-origin-column', $origin_column);
             $edge->attr('data-destination-table', $destination_table);
             $edge->attr('data-destination-column', $destination_column);
-            $title->content("$origin_table.$origin_column -> $destination_table.$destination_column");
+            $title->content("$origin_table.$origin_column\n[$relation_type / $reverse_relation_type]\n$destination_table.$destination_column");
         }
 
         # * There are sometimes annoying gaps between <path> and certain <polyline>s. By nudging
