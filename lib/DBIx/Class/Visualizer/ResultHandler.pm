@@ -86,8 +86,6 @@ sub _build_columns {
                     is_primary_key => $is_primary,
                     relations => [$self->get_relations($column_name)],
                 ));
-
-
              }
         }
     ];
