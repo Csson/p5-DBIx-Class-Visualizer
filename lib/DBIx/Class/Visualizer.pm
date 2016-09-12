@@ -81,7 +81,6 @@ has schema => (
     is => 'ro',
     required => 1,
 );
-
 has degrees_of_separation => (
     is => 'ro',
     default => 1,
@@ -422,6 +421,11 @@ sub add_edges {
             next RELATION if !$reverse_result_handler->show;
 
             my $reverse_relation = $reverse_result_handler->get_relation_between($relation->destination_column, $result_handler->name, $column->name);
+
+            # If the reverse relation is complicated (as in not a hashref with one key (and one key only))
+            # or if it is just missing
+            next RELATION if !defined $reverse_relation;
+
             next RELATION if $reverse_relation->added_to_graph;
             $self->add_edge($result_handler, $relation, $reverse_result_handler, $reverse_relation);
 
