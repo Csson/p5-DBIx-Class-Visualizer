@@ -4,6 +4,10 @@ use warnings;
 
 package DBIx::Class::Visualizer::Column;
 
+# ABSTRACT: Handle column information
+# AUTHORITY
+our $VERSION = '0.0101';
+
 use Moo;
 use DBIx::Class::Visualizer::Relation;
 use Types::Standard qw/ArrayRef InstanceOf/;

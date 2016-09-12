@@ -4,6 +4,10 @@ use warnings;
 
 package DBIx::Class::Visualizer::Relation;
 
+# ABSTRACT: Handle relation information
+# AUTHORITY
+our $VERSION = '0.0101';
+
 use Moo;
 use ReadonlyX;
 use Types::Standard qw/Str Bool Enum/;

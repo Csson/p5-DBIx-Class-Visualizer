@@ -4,6 +4,10 @@ use warnings;
 
 package DBIx::Class::Visualizer::ResultHandler;
 
+# ABSTRACT: Handle result sources and related information
+# AUTHORITY
+our $VERSION = '0.0101';
+
 use Moo;
 use Types::Standard qw/Bool ArrayRef HashRef InstanceOf Int/;
 use PerlX::Maybe;
@@ -84,13 +88,6 @@ sub _build_columns {
                 ));
 
 
-                #my $is_foreign = (any { $column_name eq $_ } @foreign_columns) ? 1 : 0;
-                #take +{
-                #    name => $column_name,
-                #    is_primary => (any { $column_name eq $_ } @primary_columns) ? 1 : 0,
-                #    is_foreign => (any { $column_name eq $_ } @foreign_columns) ? 1 : 0,
-                #    info => $column_info,
-                #};
              }
         }
     ];
