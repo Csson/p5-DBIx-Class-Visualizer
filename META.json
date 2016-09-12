@@ -136,6 +136,7 @@
             "CPAN::Meta" : "2.120900"
          },
          "requires" : {
+            "DBIx::Class" : "0.08260",
             "ExtUtils::MakeMaker" : "0",
             "File::Spec" : "0",
             "IO::Handle" : "0",

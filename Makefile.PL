@@ -29,6 +29,7 @@ my %WriteMakefileArgs = (
     "Types::Standard" => "1.000005"
   },
   "TEST_REQUIRES" => {
+    "DBIx::Class" => "0.08260",
     "ExtUtils::MakeMaker" => 0,
     "File::Spec" => 0,
     "IO::Handle" => 0,
@@ -43,6 +44,7 @@ my %WriteMakefileArgs = (
 
 
 my %FallbackPrereqs = (
+  "DBIx::Class" => "0.08260",
   "DateTime::Tiny" => "1.06",
   "ExtUtils::MakeMaker" => 0,
   "File::Spec" => 0,

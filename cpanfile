@@ -1,4 +1,4 @@
-# This file was auto-generated from iller.yaml by Dist::Iller on 2016-09-12 11:44:46 UTC.
+# This file was auto-generated from iller.yaml by Dist::Iller on 2016-09-12 11:59:22 UTC.
 
 on runtime => sub {
     requires 'DateTime::Tiny' => '1.06';
@@ -17,6 +17,7 @@ on runtime => sub {
     recommends 'Mojolicious' => '6.0';
 };
 on test => sub {
+    requires 'DBIx::Class' => '0.08260';
     requires 'ExtUtils::MakeMaker' => '0';
     requires 'File::Spec' => '0';
     requires 'IO::Handle' => '0';

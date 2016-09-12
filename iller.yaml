@@ -28,6 +28,9 @@ prereqs:
       - Types::Standard
     recommends:
       - Mojolicious: 6.0
+  test:
+    requires:
+      - DBIx::Class: 0.08260
 
 plugins:
   - +config: Author::CSSON
