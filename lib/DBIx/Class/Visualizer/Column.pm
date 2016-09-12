@@ -103,14 +103,6 @@ around BUILDARGS => sub {
     $class->$orig(%args);
 };
 
-sub get_reverse_relation_from {
-    my $self = shift;
-    my $destination_table = shift;
-    my $destination_column = shift;
-
-    return grep { $_->destination_table eq $destination_table && $_->destination_column eq $destination_column } @{ $self->relations };
-}
-
 sub column_name_label_tag {
     my $self = shift;
 
