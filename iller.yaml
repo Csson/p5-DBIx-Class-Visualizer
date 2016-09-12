@@ -26,7 +26,7 @@ prereqs:
       - ReadonlyX: 1.03
       - Syntax::Keyword::Gather: 1.002000
       - Types::Standard
-    recommended:
+    recommends:
       - Mojolicious: 6.0
 
 plugins:
