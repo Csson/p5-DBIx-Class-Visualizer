@@ -8,16 +8,14 @@ package DBIx::Class::Visualizer;
 # AUTHORITY
 our $VERSION = '0.0101';
 
+use Moo;
 use GraphViz2;
 use Log::Handler;
 use List::Util qw/any none/;
-use DateTime::Tiny;
-use Moo;
 use Types::Standard qw/ArrayRef RegexpRef Maybe HashRef InstanceOf/;
 use Syntax::Keyword::Gather;
 use JSON::MaybeXS qw/encode_json/;
 use PerlX::Maybe;
-use Path::Tiny;
 use DBIx::Class::Visualizer::ResultHandler;
 
 has logger_config => (
