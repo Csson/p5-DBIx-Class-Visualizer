@@ -107,6 +107,12 @@ has result_handlers => (
     lazy => 1,
     builder => 1,
 );
+has has_warned_for_polylines => (
+    is => 'rw',
+    isa => Bool,
+    lazy => 1,
+);
+
 sub _build_result_handlers {
     my $self = shift;
 
@@ -194,7 +200,7 @@ sub transformed_svg {
     my $output = $self->svg;
 
     if(!eval { require Mojo::DOM; require Mojo::Util; 1; }) {
-        $self->logger->warning('Using DBIx::Class::Visualizer->transformed_svg requires Mojolicious');
+        $self->logger->info('Using DBIx::Class::Visualizer->transformed_svg requires Mojolicious');
         return $output;
     }
 
@@ -371,6 +377,12 @@ sub transformed_svg {
                 };
             }
         } ];
+
+        if(!$self->has_warned_for_polylines && (any { !defined $_ } ($polylines->[0]{'points'}[1]{'x'}, $polylines->[1]{'points'}[0]{'x'}, $polylines->[0]{'points'}[1]{'y'}, $polylines->[1]{'points'}[0]{'y'}))) {
+            $self->logger->info('There might be a problem with how at least some relationships are displayed. Feel free to follow up at https://github.com/Csson/p5-DBIx-Class-Visualizer/issues/1');
+            $self->has_warned_for_polylines(1);
+            return;
+        }
 
         if(    $polylines->[0]{'points'}[1]{'x'} == $polylines->[1]{'points'}[0]{'x'}
             && $polylines->[0]{'points'}[1]{'y'} == $polylines->[1]{'points'}[0]{'y'}) {
