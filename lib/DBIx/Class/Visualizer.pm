@@ -378,9 +378,11 @@ sub transformed_svg {
             }
         } ];
 
-        if(!$self->has_warned_for_polylines && (any { !defined $_ } ($polylines->[0]{'points'}[1]{'x'}, $polylines->[1]{'points'}[0]{'x'}, $polylines->[0]{'points'}[1]{'y'}, $polylines->[1]{'points'}[0]{'y'}))) {
-            $self->logger->info('There might be a problem with how at least some relationships are displayed. Feel free to follow up at https://github.com/Csson/p5-DBIx-Class-Visualizer/issues/1');
-            $self->has_warned_for_polylines(1);
+        if(any { !defined $_ } ($polylines->[0]{'points'}[1]{'x'}, $polylines->[1]{'points'}[0]{'x'}, $polylines->[0]{'points'}[1]{'y'}, $polylines->[1]{'points'}[0]{'y'})) {
+            if(!$self->has_warned_for_polylines) {
+                $self->logger->info('There might be a problem with how at least some relationships are displayed. Feel free to follow up at https://github.com/Csson/p5-DBIx-Class-Visualizer/issues/1');
+                $self->has_warned_for_polylines(1);
+            }
             return;
         }
 

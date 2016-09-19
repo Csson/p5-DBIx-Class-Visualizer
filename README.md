@@ -8,7 +8,7 @@ DBIx::Class::Visualizer - Visualize a DBIx::Class schema
     <a href="https://travis-ci.org/Csson/p5-DBIx-Class-Visualizer"><img src="https://api.travis-ci.org/Csson/p5-DBIx-Class-Visualizer.svg?branch=master" alt="Travis status" /></a>
     <a href="http://cpants.cpanauthors.org/release/CSSON/DBIx-Class-Visualizer-0.0101"><img src="http://badgedepot.code301.com/badge/kwalitee/CSSON/DBIx-Class-Visualizer/0.0101" alt="Distribution kwalitee" /></a>
     <a href="http://matrix.cpantesters.org/?dist=DBIx-Class-Visualizer%200.0101"><img src="http://badgedepot.code301.com/badge/cpantesters/DBIx-Class-Visualizer/0.0101" alt="CPAN Testers result" /></a>
-    <img src="https://img.shields.io/badge/coverage-90.1%-yellow.svg" alt="coverage 90.1%" />
+    <img src="https://img.shields.io/badge/coverage-89.2%-orange.svg" alt="coverage 89.2%" />
     </p>
 </div>
 
