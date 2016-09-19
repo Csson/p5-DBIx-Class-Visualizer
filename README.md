@@ -6,15 +6,15 @@ DBIx::Class::Visualizer - Visualize a DBIx::Class schema
     <p>
     <img src="https://img.shields.io/badge/perl-5.10.1+-blue.svg" alt="Requires Perl 5.10.1+" />
     <a href="https://travis-ci.org/Csson/p5-DBIx-Class-Visualizer"><img src="https://api.travis-ci.org/Csson/p5-DBIx-Class-Visualizer.svg?branch=master" alt="Travis status" /></a>
-    <a href="http://cpants.cpanauthors.org/release/CSSON/DBIx-Class-Visualizer-0.0101"><img src="http://badgedepot.code301.com/badge/kwalitee/CSSON/DBIx-Class-Visualizer/0.0101" alt="Distribution kwalitee" /></a>
-    <a href="http://matrix.cpantesters.org/?dist=DBIx-Class-Visualizer%200.0101"><img src="http://badgedepot.code301.com/badge/cpantesters/DBIx-Class-Visualizer/0.0101" alt="CPAN Testers result" /></a>
+    <a href="http://cpants.cpanauthors.org/release/CSSON/DBIx-Class-Visualizer-0.0200"><img src="http://badgedepot.code301.com/badge/kwalitee/CSSON/DBIx-Class-Visualizer/0.0200" alt="Distribution kwalitee" /></a>
+    <a href="http://matrix.cpantesters.org/?dist=DBIx-Class-Visualizer%200.0200"><img src="http://badgedepot.code301.com/badge/cpantesters/DBIx-Class-Visualizer/0.0200" alt="CPAN Testers result" /></a>
     <img src="https://img.shields.io/badge/coverage-89.2%-orange.svg" alt="coverage 89.2%" />
     </p>
 </div>
 
 # VERSION
 
-Version 0.0101, released 2016-09-19.
+Version 0.0200, released 2016-09-19.
 
 # SYNOPSIS
 

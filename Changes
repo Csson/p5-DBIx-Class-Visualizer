@@ -4,24 +4,48 @@ Revision history for DBIx-Class-Visualizer
  [API Changes]
 
  [Bug Fixes]
- - Remove use of /r in a regexp.
 
  [Documentation]
- - Removed outdated example, but Mojolicious::Plugin::DbicSchemaViewer has a demo.
 
  [Enhancements]
 
  [New Features]
- - Can transform the rendered svg document so that it is much more useful in a web application.
 
  [Other Changes]
 
  [Requirements]
- - Mojolicious is required to make use of the improved svg transformation (but not otherwise).
 
  [Stats & Dependency Changes]
 
  [Testing]
+
+0.0200 2016-09-19T23:33:53Z UTC
+ [Bug Fixes]
+ - Remove use of /r in a regexp.
+
+ [Documentation]
+ - Removed outdated example, but Mojolicious::Plugin::DbicSchemaViewer has
+   a demo.
+
+ [New Features]
+ - Can transform the rendered svg document so that it is much more useful
+   in a web application.
+
+ [Requirements]
+ - Mojolicious is required to make use of the improved svg transformation
+   (but not otherwise).
+
+ [Stats & Dependency Changes]
+ - 13 files changed, 1154 insertions(+), 271 deletions(-)
+ - (run req) + JSON::MaybeXS 1.003003
+ - (run req) + Log::Handler 0.84
+ - (run req) + PerlX::Maybe 1.001
+ - (run req) + ReadonlyX 1.03
+ - (run req) + Syntax::Keyword::Gather 1.002000
+ - (run req) + Types::Standard 1.000005
+ - (run req) ~ GraphViz2 2.38 --> 2.42
+ - (run rec) + Mojolicious 6.0
+ - (test req) + DBIx::Class 0.08260
 
 0.0100 2016-09-04T20:13:20Z UTC
  - Initial release

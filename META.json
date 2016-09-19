@@ -148,19 +148,19 @@
    "provides" : {
       "DBIx::Class::Visualizer" : {
          "file" : "lib/DBIx/Class/Visualizer.pm",
-         "version" : "0.0101"
+         "version" : "0.0200"
       },
       "DBIx::Class::Visualizer::Column" : {
          "file" : "lib/DBIx/Class/Visualizer/Column.pm",
-         "version" : "0.0101"
+         "version" : "0.0200"
       },
       "DBIx::Class::Visualizer::Relation" : {
          "file" : "lib/DBIx/Class/Visualizer/Relation.pm",
-         "version" : "0.0101"
+         "version" : "0.0200"
       },
       "DBIx::Class::Visualizer::ResultHandler" : {
          "file" : "lib/DBIx/Class/Visualizer/ResultHandler.pm",
-         "version" : "0.0101"
+         "version" : "0.0200"
       }
    },
    "release_status" : "stable",
@@ -175,7 +175,7 @@
          "web" : "https://github.com/Csson/p5-DBIx-Class-Visualizer"
       }
    },
-   "version" : "0.0101",
+   "version" : "0.0200",
    "x_Dist_Zilla" : {
       "perl" : {
          "version" : "5.020001"
@@ -676,7 +676,7 @@
                   "branch" : null,
                   "changelog" : "Changes",
                   "signed" : 0,
-                  "tag" : "0.0101",
+                  "tag" : "0.0200",
                   "tag_format" : "%v",
                   "tag_message" : "Release %v%n%n%c"
                },
