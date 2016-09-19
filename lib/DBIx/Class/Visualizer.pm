@@ -343,7 +343,7 @@ sub transformed_svg {
             $edge->attr('data-origin-column', $origin_column);
             $edge->attr('data-destination-table', $destination_table);
             $edge->attr('data-destination-column', $destination_column);
-            $title->content("$origin_table.$origin_column\n[$relation_type / $reverse_relation_type]\n$destination_table.$destination_column");
+            $title->content("$origin_table.$origin_column\n&#9660; $relation_type | $reverse_relation_type &#9650;\n$destination_table.$destination_column");
         }
 
         # * There are sometimes annoying gaps between <path> and certain <polyline>s. By nudging
@@ -583,7 +583,7 @@ Boolean, defaults to C<0>. If true, only primary and foreign key columns will be
 =head2 graphviz_conf
 
 Optional hashref. This hashref is passed to the L<GraphViz2> constructor. The output from L</transformed_svg> is adapted to the default settings, so
-using these to together might cause a less usable svg document.
+using these two together might cause a less usable svg document.
 
 Won't be used if you pass C<graph> to the constructor.
 
@@ -648,25 +648,25 @@ After passing through C<transformed_svg> the same column looks like this:
           data-is-primary="1"
           data-column-name="a_column_id"
           data-column-info="{
-            "extra": {},
+            "name": "a_column_id",
+            "data_type": "integer",
+            "is_primary_key": 1
+            "is_auto_increment": 1,
             "is_nullable": 0,
             "is_foreign_key": 0,
             "is_numeric": 1,
-            "name": "a_column_id",
-            "is_auto_increment": 1,
+            "extra": {},
             "relations":[
                 {
-                    "origin_column": "a_column_id",
-                    "cascade_delete": 1,
-                    "destination_column": "a_column_id",
                     "origin_table": "TableName",
-                    "relation_type": "has_many",
+                    "origin_column": "a_column_id",
                     "destination_table": "AnotherTableName"
+                    "destination_column": "a_column_id",
+                    "relation_type": "has_many",
+                    "cascade_delete": 1,
                 },
                 ...
             ],
-            "data_type": "integer",
-            "is_primary_key": 1
           }">a_column_id</text>
 
 The C<data-column-info> attribute is a json object that is directly usable by something like jQuery:

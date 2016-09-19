@@ -108,7 +108,7 @@ sub column_name_label_tag {
 
     my $column_name_tag = $self->name;
     $column_name_tag = $self->{'is_primary_key'} ? "<b>$column_name_tag</b>" : $column_name_tag;
-    $column_name_tag = $self->{'is_foreign_key'} ? "<b>$column_name_tag</b>" : $column_name_tag;
+    $column_name_tag = $self->{'is_foreign_key'} ? "<u>$column_name_tag</u>" : $column_name_tag;
     return $column_name_tag;
 }
 
