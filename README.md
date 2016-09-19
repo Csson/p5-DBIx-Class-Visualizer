@@ -8,13 +8,13 @@ DBIx::Class::Visualizer - Visualize a DBIx::Class schema
     <a href="https://travis-ci.org/Csson/p5-DBIx-Class-Visualizer"><img src="https://api.travis-ci.org/Csson/p5-DBIx-Class-Visualizer.svg?branch=master" alt="Travis status" /></a>
     <a href="http://cpants.cpanauthors.org/release/CSSON/DBIx-Class-Visualizer-0.0101"><img src="http://badgedepot.code301.com/badge/kwalitee/CSSON/DBIx-Class-Visualizer/0.0101" alt="Distribution kwalitee" /></a>
     <a href="http://matrix.cpantesters.org/?dist=DBIx-Class-Visualizer%200.0101"><img src="http://badgedepot.code301.com/badge/cpantesters/DBIx-Class-Visualizer/0.0101" alt="CPAN Testers result" /></a>
-    <img src="https://img.shields.io/badge/coverage-90.0%-yellow.svg" alt="coverage 90.0%" />
+    <img src="https://img.shields.io/badge/coverage-90.1%-yellow.svg" alt="coverage 90.1%" />
     </p>
 </div>
 
 # VERSION
 
-Version 0.0101, released 2016-09-12.
+Version 0.0101, released 2016-09-19.
 
 # SYNOPSIS
 
@@ -66,10 +66,14 @@ defines how many relationship steps should be followed to other result sources t
 
 Default is `1`.
 
+## only\_keys
+
+Boolean, defaults to `0`. If true, only primary and foreign key columns will be rendered.
+
 ## graphviz\_conf
 
 Optional hashref. This hashref is passed to the [GraphViz2](https://metacpan.org/pod/GraphViz2) constructor. The output from ["transformed\_svg"](#transformed_svg) is adapted to the default settings, so
-using these to together might cause a less usable svg document.
+using these two together might cause a less usable svg document.
 
 Won't be used if you pass `graph` to the constructor.
 
@@ -132,25 +136,25 @@ After passing through `transformed_svg` the same column looks like this:
           data-is-primary="1"
           data-column-name="a_column_id"
           data-column-info="{
-            "extra": {},
+            "name": "a_column_id",
+            "data_type": "integer",
+            "is_primary_key": 1
+            "is_auto_increment": 1,
             "is_nullable": 0,
             "is_foreign_key": 0,
             "is_numeric": 1,
-            "name": "a_column_id",
-            "is_auto_increment": 1,
+            "extra": {},
             "relations":[
                 {
-                    "origin_column": "a_column_id",
-                    "cascade_delete": 1,
-                    "destination_column": "a_column_id",
                     "origin_table": "TableName",
-                    "relation_type": "has_many",
+                    "origin_column": "a_column_id",
                     "destination_table": "AnotherTableName"
+                    "destination_column": "a_column_id",
+                    "relation_type": "has_many",
+                    "cascade_delete": 1,
                 },
                 ...
             ],
-            "data_type": "integer",
-            "is_primary_key": 1
           }">a_column_id</text>
 
 The `data-column-info` attribute is a json object that is directly usable by something like jQuery:
