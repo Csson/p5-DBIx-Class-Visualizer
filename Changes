@@ -7,21 +7,21 @@ Revision history for DBIx-Class-Visualizer
  - Remove use of /r in a regexp.
 
  [Documentation]
+ - Removed outdated example, but Mojolicious::Plugin::DbicSchemaViewer has a demo.
 
  [Enhancements]
- - Can transform the rendered svg document so that it is much more useful in a web application.
 
  [New Features]
+ - Can transform the rendered svg document so that it is much more useful in a web application.
 
  [Other Changes]
 
  [Requirements]
- - Mojolicious is required to make use of the improved svg transformation.
+ - Mojolicious is required to make use of the improved svg transformation (but not otherwise).
 
  [Stats & Dependency Changes]
 
  [Testing]
- - Make Travis test on 5.10 too.
 
 0.0100 2016-09-04T20:13:20Z UTC
  - Initial release
