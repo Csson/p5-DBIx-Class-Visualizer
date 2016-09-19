@@ -6,7 +6,7 @@ package DBIx::Class::Visualizer::Relation;
 
 # ABSTRACT: Handle relation information
 # AUTHORITY
-our $VERSION = '0.0101';
+our $VERSION = '0.0201';
 
 use Moo;
 use ReadonlyX;

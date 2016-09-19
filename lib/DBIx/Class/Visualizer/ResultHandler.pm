@@ -6,7 +6,7 @@ package DBIx::Class::Visualizer::ResultHandler;
 
 # ABSTRACT: Handle result sources and related information
 # AUTHORITY
-our $VERSION = '0.0101';
+our $VERSION = '0.0201';
 
 use Moo;
 use Types::Standard qw/Bool ArrayRef HashRef InstanceOf Int/;
