@@ -45,7 +45,11 @@ has columns => (
     lazy => 1,
     builder => 1,
 );
-
+has only_keys => (
+    is => 'ro',
+    isa => Bool,
+    default => 0,
+);
 has relations => (
     is => 'ro',
     isa => ArrayRef[InstanceOf['DBIx::Class::Visualizer::Relation']],
@@ -71,14 +75,17 @@ sub _build_columns {
     my $self = shift;
 
     my @primary_columns = $self->rs->primary_columns;
-    my @foreign_columns = map { keys %{ $_->{'attrs'}{'fk_columns'} } } map { $self->rs->relationship_info($_) } $self->rs->relationships;
 
     return [
         gather {
+            COLUMN:
             for my $column_name ($self->rs->columns) {
 
                 my $column_info = $self->rs->column_info($column_name);
                 my $is_primary = (any { $column_name eq $_ } @primary_columns) ? 1 : 0;
+                my $is_foreign = $column_info->{'is_foreign_key'} ? 1 : 0;
+
+                next COLUMN if !$is_primary && !$is_foreign && $self->only_keys;
 
                 take(DBIx::Class::Visualizer::Column->new(
                     name => $column_name,

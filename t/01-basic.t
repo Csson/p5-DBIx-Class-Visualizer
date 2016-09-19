@@ -58,6 +58,13 @@ subtest svg => sub {
     my $svg = $vis->svg;
     like $svg, qr/<title>Book</, 'SVG appears rendered correctly';
 };
+subtest only_keys => sub {
+    plan skip_all => 'Mojolicious not installed' if $@;
+
+    my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema, only_keys => 1);
+    my $svg = $vis->svg;
+    unlike $svg, qr/birth_date/, 'Non-key column excluded';
+};
 subtest transformed_svg => sub {
     eval { require Mojolicious };
     plan skip_all => 'Mojolicious not installed' if $@;

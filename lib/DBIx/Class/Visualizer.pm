@@ -12,7 +12,7 @@ use Moo;
 use GraphViz2;
 use Log::Handler;
 use List::Util qw/any none/;
-use Types::Standard qw/ArrayRef RegexpRef Maybe HashRef InstanceOf/;
+use Types::Standard qw/ArrayRef RegexpRef Maybe HashRef InstanceOf Bool/;
 use Syntax::Keyword::Gather;
 use JSON::MaybeXS qw/encode_json/;
 use PerlX::Maybe;
@@ -95,6 +95,12 @@ has skip_result_source_names => (
     isa => ArrayRef,
     default => sub { [] },
 );
+has only_keys => (
+    is => 'ro',
+    isa => Bool,
+    default => 0,
+);
+
 has result_handlers => (
     is => 'ro',
     isa => ArrayRef[Maybe[InstanceOf['DBIx::Class::Visualizer::ResultHandler']]],
@@ -122,6 +128,7 @@ sub _build_result_handlers {
                     wanted => (any { $source_name eq $_ } (@{ $self->wanted_result_source_names })) ? 1 : 0,
                     skip => (any { $source_name eq $_ } (@{ $self->skip_result_source_names }))     ? 1 : 0,
                     rs   => $self->schema->resultset($source_name)->result_source,
+                    only_keys => $self->only_keys,
                 ));
             }
         }
@@ -567,6 +574,11 @@ Optional. A non-negative integer that is used together with L</wanted_result_sou
 defines how many relationship steps should be followed to other result sources that also should be included in the output.
 
 Default is C<1>.
+
+=head2 only_keys
+
+Boolean, defaults to C<0>. If true, only primary and foreign key columns will be rendered.
+
 
 =head2 graphviz_conf
 
