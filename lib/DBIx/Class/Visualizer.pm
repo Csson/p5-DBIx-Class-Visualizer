@@ -9,7 +9,6 @@ package DBIx::Class::Visualizer;
 our $VERSION = '0.0201';
 
 use Moo;
-use GraphViz2;
 use Log::Handler;
 use List::Util qw/any none/;
 use Types::Standard qw/ArrayRef Maybe InstanceOf Bool/;
@@ -69,11 +68,12 @@ has graphviz_conf => (
     },
 );
 
-has graph => (
+has graphviz => (
     is => 'lazy',
-    handles => [qw/run/],
+    init_arg => 'graph',
 );
-sub _build_graph {
+sub _build_graphviz {
+    require GraphViz2;
     return GraphViz2->new(shift->graphviz_conf);
 }
 
@@ -158,7 +158,12 @@ sub any_result_handler_is_wanted {
     return scalar grep { $_->wanted } @result_handlers;
 }
 
-sub BUILD {
+has graph => (
+    is => 'lazy',
+    handles => [qw/run/],
+    init_arg => undef,
+);
+sub _build_graph {
     my $self = shift;
 
     if($self->has_wanted_result_source_names) {
@@ -182,7 +187,7 @@ sub BUILD {
 
     my %rel_added;
     for my $handler ($self->showable_result_handlers) {
-        $self->graph->add_node(
+        $self->graphviz->add_node(
             name => $handler->node_name,
             label => _gen_html($handler->name, [ map [ $_->name, @$_{qw(is_primary_key is_foreign_key)} ], @{ $handler->columns } ]),
             margin => 0.01,
@@ -217,7 +222,7 @@ sub BUILD {
                                && $relation[0]->is_belongs_to;
                 @handler = reverse @handler if $switched;
                 @relation = reverse @relation if $switched;
-                $self->graph->add_edge(
+                $self->graphviz->add_edge(
                     from      => $handler[0]->node_name,
                     to        => $handler[1]->node_name,
                     tailport  => $relation[0]->origin_column,
@@ -233,6 +238,7 @@ sub BUILD {
             }
         }
     }
+    $self->graphviz;
 }
 
 sub svg {
