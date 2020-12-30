@@ -419,7 +419,7 @@ sub add_node {
 
     $self->graph->add_node(
         name => $result_handler->node_name,
-        label => $self->create_label_html($result_handler),
+        label => _gen_html($result_handler->name, [ map [ $_->name, @$_{qw(is_primary_key is_foreign_key)} ], @{ $result_handler->columns } ]),
         margin => 0.01,
     );
 }
@@ -493,40 +493,32 @@ sub add_edge {
     $self->graph->add_edge(%edge);
 }
 
-sub create_label_html {
-    my $self = shift;
-    my $result_handler = shift;
+sub _column_html {
+    my ($name, $is_pk, $is_fk) = @_;
+    my $tag = $name;
+    $tag = "<b>$tag</b>" if $is_pk;
+    $tag = "<u>$tag</u>" if $is_fk;
+    my $name_pad = padding($name);
+    qq{
+            <tr><td align="left" port="$name" bgcolor="#fefefe"> <font point-size="10" color="#222222">$tag</font><font color="white">_$name_pad</font></td></tr>};
+}
 
-    my $source_name = $result_handler->name;
-    my $node_name = $result_handler->node_name;
-
-    my @column_html = gather {
-        for my $column (@{ $result_handler->columns }) {
-
-            my $column_name_tag = $column->column_name_label_tag;
-
-            take qq{
-            <tr><td align="left" port="@{[ $column->name ]}" bgcolor="#fefefe"> <font point-size="10" color="#222222">$column_name_tag</font><font color="white">_@{[ $self->padding($column->name) ]}</font></td></tr>};
-        }
-    };
-
+sub _gen_html {
+    my ($source_name, $col_infos) = @_;
     # Don't change colors here without fixing svg(). Magic numbers..
-    my $html = qq{
+    qq{
         <<table cellborder="0" cellpadding="0.8" cellspacing="0" border="1" color="#f0f0f0" width="150">
             <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
-            <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>$source_name</b></font><font color="white">_@{[ $self->padding($source_name) ]}</font></td></tr>
+            <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>$source_name</b></font><font color="white">_@{[ padding($source_name) ]}</font></td></tr>
             <tr><td><font point-size="3"> </font></td></tr>
-            } . join ('', @column_html) . qq{
+            } . join ('', map _column_html(@$_), @$col_infos) . qq{
         </table>>
     };
-    return $html;
 }
 
 # graphviz (at least sometimes) draws too small boxes. We pad them a little (and remove the padding in svg())
 sub padding {
-    my $self = shift;
     my $text = shift;
-
     return '_' x int (length ($text) / 10);
 }
 
