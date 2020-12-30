@@ -134,11 +134,4 @@ sub get_column {
     return (grep { $column_name eq $_->name } @{ $self->columns })[0];
 }
 
-# Node names can't have colons in them.
-sub node_name {
-    my $node_name = shift->name;
-    $node_name =~ s{::}{__}g;
-    return $node_name;
-}
-
 1;

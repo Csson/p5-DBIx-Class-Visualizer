@@ -46,6 +46,7 @@ has graphviz_conf => (
 
         return +{
             global => {
+                combine_node_and_port => 0,
                 directed => 1,
                 smoothing => 'none',
                 overlap => 'false',
@@ -188,7 +189,7 @@ sub _build_graph {
     my %rel_added;
     for my $handler ($self->showable_result_handlers) {
         $self->graphviz->add_node(
-            name => $handler->node_name,
+            name => $handler->name,
             label => _gen_html($handler->name, [ map [ $_->name, @$_{qw(is_primary_key is_foreign_key)} ], @{ $handler->columns } ]),
             margin => 0.01,
         );
@@ -223,8 +224,8 @@ sub _build_graph {
                 @handler = reverse @handler if $switched;
                 @relation = reverse @relation if $switched;
                 $self->graphviz->add_edge(
-                    from      => $handler[0]->node_name,
-                    to        => $handler[1]->node_name,
+                    from      => $handler[0]->name,
+                    to        => $handler[1]->name,
                     tailport  => $relation[0]->origin_column,
                     headport  => $relation[0]->destination_column,
                     arrowtail => $relation[1]->arrow_type,
@@ -311,18 +312,18 @@ sub transformed_svg {
         my $node = shift;
         my $result_handler = $self->result_handler($node->at('text.table-name')->all_text);
         $node->attr('data-table-name', $result_handler->name);
-        $node->attr(id => 'node-'.$result_handler->node_name);
+        $node->attr(id => 'node-'.$result_handler->name);
 
         $node->find('text.column-name')->each(sub {
             my $el = shift;
             my $column_name = $el->all_text;
             $el->attr('data-column-name', $column_name);
-            $el->attr(id => 'column-'.$result_handler->node_name . '-' . $column_name);
+            $el->attr(id => 'column-'.$result_handler->name . '-' . $column_name);
             my $polygon = $el->previous;
 
             # background polygon
             $polygon->attr('data-column-name', $column_name);
-            $polygon->attr(id => 'bg-column-'.$result_handler->node_name . '-' . $column_name);
+            $polygon->attr(id => 'bg-column-'.$result_handler->name . '-' . $column_name);
 
             $el->attr('data-column-info', encode_json($result_handler->get_column($column_name)->TO_JSON));
         });
@@ -384,15 +385,11 @@ sub transformed_svg {
         my $edge = shift;
         my $title = $edge->at('title');
 
-        if($title->text =~ m{ ^ ([^:]+) : ([^-]+?) -> ([^:;]+) : (.+) $ }x) {
+        if($title->text =~ m{ ^ (\S+) : ([^-]+?) -> (\S+) : (.+) $ }x) {
             my $origin_table = $1;
             my $origin_column = $2;
             my $destination_table = $3;
             my $destination_column = $4;
-
-            # Restore table names. See also node_name()
-            $origin_table =~ s{__}{::}g;
-            $destination_table =~ s{__}{::}g;
 
             my $relation_type = $self->result_handler($origin_table)->get_relation_between($origin_column, $destination_table, $destination_column)->relation_type;
             my $reverse_relation_type = $self->result_handler($destination_table)->get_relation_between($destination_column, $origin_table, $origin_column)->relation_type;
