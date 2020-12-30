@@ -12,7 +12,7 @@ use Moo;
 use GraphViz2;
 use Log::Handler;
 use List::Util qw/any none/;
-use Types::Standard qw/ArrayRef RegexpRef Maybe HashRef InstanceOf Bool/;
+use Types::Standard qw/ArrayRef Maybe InstanceOf Bool/;
 use Syntax::Keyword::Gather;
 use JSON::MaybeXS qw/encode_json/;
 use PerlX::Maybe;
@@ -68,15 +68,15 @@ has graphviz_conf => (
         };
     },
 );
+
 has graph => (
-    is => 'ro',
-    lazy => 1,
-    builder => '_build_graph',
+    is => 'lazy',
     handles => [qw/run/],
 );
 sub _build_graph {
     return GraphViz2->new(shift->graphviz_conf);
 }
+
 has schema => (
     is => 'ro',
     required => 1,
@@ -102,15 +102,12 @@ has only_keys => (
 );
 
 has result_handlers => (
-    is => 'ro',
+    is => 'lazy',
     isa => ArrayRef[Maybe[InstanceOf['DBIx::Class::Visualizer::ResultHandler']]],
-    lazy => 1,
-    builder => 1,
 );
 has has_warned_for_polylines => (
     is => 'rw',
     isa => Bool,
-    lazy => 1,
 );
 
 sub _build_result_handlers {
@@ -431,8 +428,6 @@ sub add_edges {
     my $self = shift;
     my $result_handler = shift;
 
-    my $rs = $result_handler->rs;
-
     COLUMN:
     for my $column (@{ $result_handler->columns }) {
 
@@ -463,13 +458,6 @@ sub add_edge {
     my $relation = shift;
     my $reverse_result_handler = shift;
     my $reverse_relation = shift;
-
-    # We need the arrow setting before possibly
-    # inverting the relationships. The arrows
-    # should be the same regardless of the direction
-    # of the relationship.
-    my $arrowtail = $reverse_relation->arrow_type;
-    my $arrowhead = $relation->arrow_type;
 
     # If we have any 'wanted' result sources
     # *and* any of the two involved result_handlers are wanted
@@ -605,7 +593,7 @@ Won't be used if you pass C<graph> to the constructor.
 
 Optional. A L<GraphViz2> object. Pass this if you need to use an already constructed graph.
 
-After L</new> has run it can be useful if you, for example, wishes to see the arguments to the dot renderer:
+After L</new> has run it can be useful if, for example, you wish to see the arguments to the dot renderer:
 
     my $visualizer = DBIx::Class::Visualizer->new(schema => $schema);
     my $svg = $visualizer->svg;
