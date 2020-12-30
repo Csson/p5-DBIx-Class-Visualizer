@@ -10,6 +10,8 @@
             <tr><td align="left" port="name" bgcolor="#fefefe"> <font point-size="10" color="#222222">name</font><font color="white">_</font></td></tr>
             <tr><td align="left" port="birth_date" bgcolor="#fefefe"> <font point-size="10" color="#222222">birth_date</font><font color="white">__</font></td></tr>
         </table>> margin="0.01" ]
+ "Author" -> "AuthorThing" [ arrowhead="vee" arrowtail="nonetee" dir="both" headport="author_id" minlen="2" penwidth="2" tailport="author_id" ]
+ "Author" -> "BookAuthor" [ arrowhead="crownoneodot" arrowtail="nonetee" dir="both" headport="author_id" minlen="2" penwidth="2" tailport="author_id" ]
  "AuthorThing" [ label=<<table cellborder="0" cellpadding="0.8" cellspacing="0" border="1" color="#f0f0f0" width="150">
             <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
             <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>AuthorThing</b></font><font color="white">__</font></td></tr>
@@ -27,6 +29,7 @@
             <tr><td align="left" port="isbn" bgcolor="#fefefe"> <font point-size="10" color="#222222">isbn</font><font color="white">_</font></td></tr>
             <tr><td align="left" port="title" bgcolor="#fefefe"> <font point-size="10" color="#222222">title</font><font color="white">_</font></td></tr>
         </table>> margin="0.01" ]
+ "Book" -> "BookAuthor" [ arrowhead="crownoneodot" arrowtail="nonetee" dir="both" headport="book_id" minlen="2" penwidth="2" tailport="book_id" ]
  "BookAuthor" [ label=<<table cellborder="0" cellpadding="0.8" cellspacing="0" border="1" color="#f0f0f0" width="150">
             <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
             <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>BookAuthor</b></font><font color="white">__</font></td></tr>
@@ -43,8 +46,5 @@
             <tr><td align="left" port="an_id" bgcolor="#fefefe"> <font point-size="10" color="#222222"><b>an_id</b></font><font color="white">_</font></td></tr>
             <tr><td align="left" port="author_id" bgcolor="#fefefe"> <font point-size="10" color="#222222">author_id</font><font color="white">_</font></td></tr>
         </table>> margin="0.01" ]
- "Author" -> "AuthorThing" [ arrowhead="vee" arrowtail="nonetee" dir="both" headport="author_id" minlen="2" penwidth="2" tailport="author_id" ]
- "Author" -> "BookAuthor" [ arrowhead="crownoneodot" arrowtail="nonetee" dir="both" headport="author_id" minlen="2" penwidth="2" tailport="author_id" ]
- "Book" -> "BookAuthor" [ arrowhead="crownoneodot" arrowtail="nonetee" dir="both" headport="book_id" minlen="2" penwidth="2" tailport="book_id" ]
 }
 '

@@ -180,9 +180,59 @@ sub BUILD {
         }
     }
 
-    my @handlers = $self->showable_result_handlers;
-    $self->add_node($_)  for @handlers;
-    $self->add_edges($_) for @handlers;
+    my %rel_added;
+    for my $handler ($self->showable_result_handlers) {
+        $self->graph->add_node(
+            name => $handler->node_name,
+            label => _gen_html($handler->name, [ map [ $_->name, @$_{qw(is_primary_key is_foreign_key)} ], @{ $handler->columns } ]),
+            margin => 0.01,
+        );
+        my @columns = map $_->[1], sort { $a->[0] cmp $b->[0] }
+            map [$_->name, $_], @{ $handler->columns };
+        COLUMN:
+        for my $column (@columns) {
+            my @relations = map $_->[1], sort { $a->[0] cmp $b->[0] }
+                map {
+                    my $r = $_;
+                    [join(' ', map $r->$_, qw(origin_table origin_column destination_table destination_column)), $_]
+                } @{ $column->relations };
+            RELATION:
+            for my $relation (@relations) {
+                next RELATION if $rel_added{$relation};
+                my $reverse_result_handler = $self->result_handler($relation->destination_table);
+                next RELATION if !$reverse_result_handler->show;
+                my $reverse_relation = $reverse_result_handler->get_relation_between($relation->destination_column, $handler->name, $column->name);
+                next RELATION if !defined $reverse_relation;
+                next RELATION if $rel_added{$reverse_relation};
+                my @handler = ($handler, $reverse_result_handler);
+                my @relation = ($relation, $reverse_relation);
+                # If we have any 'wanted' result sources
+                # *and* any of the two involved result_handlers are wanted
+                # *and* the origin relation belongs_to the other
+                # -> invert the edge direction.
+                # (this places nodes that has_many to the current node on the left
+                # and nodes that belongs_to to the current node on the right.)
+                my $switched = $self->has_wanted_result_source_names
+                               && $self->any_result_handler_is_wanted(@handler)
+                               && $relation[0]->is_belongs_to;
+                @handler = reverse @handler if $switched;
+                @relation = reverse @relation if $switched;
+                $self->graph->add_edge(
+                    from      => $handler[0]->node_name,
+                    to        => $handler[1]->node_name,
+                    tailport  => $relation[0]->origin_column,
+                    headport  => $relation[0]->destination_column,
+                    arrowtail => $relation[1]->arrow_type,
+                    arrowhead => $relation[0]->arrow_type,
+                    dir       => 'both',
+                    minlen    => 2,
+                    penwidth  => 2,
+                );
+                $_->added_to_graph(1) for $relation, $reverse_relation;
+                @rel_added{ $relation, $reverse_relation } = (1, 1);
+            }
+        }
+    }
 }
 
 sub svg {
@@ -411,86 +461,6 @@ sub transformed_svg {
 
     return $rendered;
 
-}
-
-sub add_node {
-    my $self = shift;
-    my $result_handler = shift;
-
-    $self->graph->add_node(
-        name => $result_handler->node_name,
-        label => _gen_html($result_handler->name, [ map [ $_->name, @$_{qw(is_primary_key is_foreign_key)} ], @{ $result_handler->columns } ]),
-        margin => 0.01,
-    );
-}
-
-sub add_edges {
-    my $self = shift;
-    my $result_handler = shift;
-
-    my @columns = map $_->[1], sort { $a->[0] cmp $b->[0] }
-        map [$_->name, $_], @{ $result_handler->columns };
-    COLUMN:
-    for my $column (@columns) {
-
-        my @relations = map $_->[1], sort { $a->[0] cmp $b->[0] }
-            map {
-                my $r = $_;
-                [join(' ', map $r->$_, qw(origin_table origin_column destination_table destination_column)), $_]
-            } @{ $column->relations };
-        RELATION:
-        for my $relation (@relations) {
-            next RELATION if $relation->added_to_graph;
-
-            my $reverse_result_handler = $self->result_handler($relation->destination_table);
-            next RELATION if !$reverse_result_handler->show;
-
-            my $reverse_relation = $reverse_result_handler->get_relation_between($relation->destination_column, $result_handler->name, $column->name);
-
-            # If the reverse relation is complicated (as in not a hashref with one key (and one key only))
-            # or if it is just missing
-            next RELATION if !defined $reverse_relation;
-
-            next RELATION if $reverse_relation->added_to_graph;
-            $self->add_edge($result_handler, $relation, $reverse_result_handler, $reverse_relation);
-
-            $relation->added_to_graph(1);
-            $reverse_relation->added_to_graph(1);
-        }
-    }
-}
-sub add_edge {
-    my $self = shift;
-    my @handler = shift;
-    my @relation = shift;
-    push @handler, shift;
-    push @relation, shift;
-
-    # If we have any 'wanted' result sources
-    # *and* any of the two involved result_handlers are wanted
-    # *and* the origin relation belongs_to the other
-    # -> invert the edge direction.
-    # (this places nodes that has_many to the current node on the left
-    # and nodes that belongs_to to the current node on the right.)
-    my $switched = $self->has_wanted_result_source_names
-                   && $self->any_result_handler_is_wanted(@handler)
-                   && $relation[0]->is_belongs_to;
-    @handler = reverse @handler if $switched;
-    @relation = reverse @relation if $switched;
-
-    my %edge = (
-        from      => $handler[0]->node_name,
-        to        => $handler[1]->node_name,
-        tailport  => $relation[0]->origin_column,
-        headport  => $relation[0]->destination_column,
-        arrowtail => $relation[1]->arrow_type,
-        arrowhead => $relation[0]->arrow_type,
-        dir       => 'both',
-        minlen    => 2,
-        penwidth  => 2,
-    );
-
-    $self->graph->add_edge(%edge);
 }
 
 sub _column_html {
