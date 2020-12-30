@@ -461,10 +461,10 @@ sub add_edges {
 }
 sub add_edge {
     my $self = shift;
-    my $result_handler = shift;
-    my $relation = shift;
-    my $reverse_result_handler = shift;
-    my $reverse_relation = shift;
+    my @handler = shift;
+    my @relation = shift;
+    push @handler, shift;
+    push @relation, shift;
 
     # If we have any 'wanted' result sources
     # *and* any of the two involved result_handlers are wanted
@@ -473,16 +473,18 @@ sub add_edge {
     # (this places nodes that has_many to the current node on the left
     # and nodes that belongs_to to the current node on the right.)
     my $switched = $self->has_wanted_result_source_names
-                   && $self->any_result_handler_is_wanted($result_handler, $reverse_result_handler)
-                   && $relation->is_belongs_to;
+                   && $self->any_result_handler_is_wanted(@handler)
+                   && $relation[0]->is_belongs_to;
+    @handler = reverse @handler if $switched;
+    @relation = reverse @relation if $switched;
 
     my %edge = (
-        from      => ($switched ? $reverse_result_handler : $result_handler)->node_name,
-        to        => ($switched ? $result_handler : $reverse_result_handler)->node_name,
-        tailport  => ($switched ? $reverse_relation : $relation)->origin_column,
-        headport  => ($switched ? $reverse_relation : $relation)->destination_column,
-        arrowtail => ($switched ? $relation : $reverse_relation)->arrow_type,
-        arrowhead => ($switched ? $reverse_relation : $relation)->arrow_type,
+        from      => $handler[0]->node_name,
+        to        => $handler[1]->node_name,
+        tailport  => $relation[0]->origin_column,
+        headport  => $relation[0]->destination_column,
+        arrowtail => $relation[1]->arrow_type,
+        arrowhead => $relation[0]->arrow_type,
         dir       => 'both',
         minlen    => 2,
         penwidth  => 2,
