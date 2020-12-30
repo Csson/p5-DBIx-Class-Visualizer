@@ -16,7 +16,7 @@ prereqs:
   runtime:
     requires:
       - perl: 5.010001
-      - GraphViz2: 2.42
+      - GraphViz2: 2.62
       - List::Util
       - DateTime::Tiny: 1.06
       - Moo: 2.00
@@ -31,6 +31,7 @@ prereqs:
   test:
     requires:
       - DBIx::Class: 0.08260
+      - Test::Snapshot: 0.06
 
 plugins:
   - +config: Author::CSSON

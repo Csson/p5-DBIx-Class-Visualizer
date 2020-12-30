@@ -180,9 +180,9 @@ sub BUILD {
         }
     }
 
-    $self->add_node($_)  for $self->showable_result_handlers;
-    $self->add_edges($_) for $self->showable_result_handlers;
-
+    my @handlers = $self->showable_result_handlers;
+    $self->add_node($_)  for @handlers;
+    $self->add_edges($_) for @handlers;
 }
 
 sub svg {
@@ -428,11 +428,18 @@ sub add_edges {
     my $self = shift;
     my $result_handler = shift;
 
+    my @columns = map $_->[1], sort { $a->[0] cmp $b->[0] }
+        map [$_->name, $_], @{ $result_handler->columns };
     COLUMN:
-    for my $column (@{ $result_handler->columns }) {
+    for my $column (@columns) {
 
+        my @relations = map $_->[1], sort { $a->[0] cmp $b->[0] }
+            map {
+                my $r = $_;
+                [join(' ', map $r->$_, qw(origin_table origin_column destination_table destination_column)), $_]
+            } @{ $column->relations };
         RELATION:
-        for my $relation (@{ $column->relations }) {
+        for my $relation (@relations) {
             next RELATION if $relation->added_to_graph;
 
             my $reverse_result_handler = $self->result_handler($relation->destination_table);

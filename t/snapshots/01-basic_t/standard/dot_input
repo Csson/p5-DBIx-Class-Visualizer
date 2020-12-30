@@ -1,0 +1,50 @@
+'digraph Perl {
+ graph [ fontname="helvetica" fontsize="7" labeljust="l" nodesep="0.38" rankdir="LR" ranksep="0.46" splines="true" ]
+ node [ fontname="helvetica" shape="none" ]
+ "Author" [ label=<<table cellborder="0" cellpadding="0.8" cellspacing="0" border="1" color="#f0f0f0" width="150">
+            <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
+            <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>Author</b></font><font color="white">_</font></td></tr>
+            <tr><td><font point-size="3"> </font></td></tr>
+            
+            <tr><td align="left" port="author_id" bgcolor="#fefefe"> <font point-size="10" color="#222222"><b>author_id</b></font><font color="white">_</font></td></tr>
+            <tr><td align="left" port="name" bgcolor="#fefefe"> <font point-size="10" color="#222222">name</font><font color="white">_</font></td></tr>
+            <tr><td align="left" port="birth_date" bgcolor="#fefefe"> <font point-size="10" color="#222222">birth_date</font><font color="white">__</font></td></tr>
+        </table>> margin="0.01" ]
+ "AuthorThing" [ label=<<table cellborder="0" cellpadding="0.8" cellspacing="0" border="1" color="#f0f0f0" width="150">
+            <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
+            <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>AuthorThing</b></font><font color="white">__</font></td></tr>
+            <tr><td><font point-size="3"> </font></td></tr>
+            
+            <tr><td align="left" port="author_id" bgcolor="#fefefe"> <font point-size="10" color="#222222"><b>author_id</b></font><font color="white">_</font></td></tr>
+            <tr><td align="left" port="thing" bgcolor="#fefefe"> <font point-size="10" color="#222222">thing</font><font color="white">_</font></td></tr>
+        </table>> margin="0.01" ]
+ "Book" [ label=<<table cellborder="0" cellpadding="0.8" cellspacing="0" border="1" color="#f0f0f0" width="150">
+            <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
+            <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>Book</b></font><font color="white">_</font></td></tr>
+            <tr><td><font point-size="3"> </font></td></tr>
+            
+            <tr><td align="left" port="book_id" bgcolor="#fefefe"> <font point-size="10" color="#222222"><b>book_id</b></font><font color="white">_</font></td></tr>
+            <tr><td align="left" port="isbn" bgcolor="#fefefe"> <font point-size="10" color="#222222">isbn</font><font color="white">_</font></td></tr>
+            <tr><td align="left" port="title" bgcolor="#fefefe"> <font point-size="10" color="#222222">title</font><font color="white">_</font></td></tr>
+        </table>> margin="0.01" ]
+ "BookAuthor" [ label=<<table cellborder="0" cellpadding="0.8" cellspacing="0" border="1" color="#f0f0f0" width="150">
+            <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
+            <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>BookAuthor</b></font><font color="white">__</font></td></tr>
+            <tr><td><font point-size="3"> </font></td></tr>
+            
+            <tr><td align="left" port="book_id" bgcolor="#fefefe"> <font point-size="10" color="#222222"><u><b>book_id</b></u></font><font color="white">_</font></td></tr>
+            <tr><td align="left" port="author_id" bgcolor="#fefefe"> <font point-size="10" color="#222222"><u><b>author_id</b></u></font><font color="white">_</font></td></tr>
+        </table>> margin="0.01" ]
+ "ResultSourceWithMissingRelation" [ label=<<table cellborder="0" cellpadding="0.8" cellspacing="0" border="1" color="#f0f0f0" width="150">
+            <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
+            <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>ResultSourceWithMissingRelation</b></font><font color="white">____</font></td></tr>
+            <tr><td><font point-size="3"> </font></td></tr>
+            
+            <tr><td align="left" port="an_id" bgcolor="#fefefe"> <font point-size="10" color="#222222"><b>an_id</b></font><font color="white">_</font></td></tr>
+            <tr><td align="left" port="author_id" bgcolor="#fefefe"> <font point-size="10" color="#222222">author_id</font><font color="white">_</font></td></tr>
+        </table>> margin="0.01" ]
+ "Author" -> "AuthorThing" [ arrowhead="vee" arrowtail="nonetee" dir="both" headport="author_id" minlen="2" penwidth="2" tailport="author_id" ]
+ "Author" -> "BookAuthor" [ arrowhead="crownoneodot" arrowtail="nonetee" dir="both" headport="author_id" minlen="2" penwidth="2" tailport="author_id" ]
+ "Book" -> "BookAuthor" [ arrowhead="crownoneodot" arrowtail="nonetee" dir="both" headport="book_id" minlen="2" penwidth="2" tailport="book_id" ]
+}
+'

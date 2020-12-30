@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Snapshot;
 use if $ENV{'AUTHOR_TESTING'}, 'Test::Warnings';
 
 use lib 't/lib';
@@ -11,6 +12,7 @@ my $schema = TestFor::DbicVisualizer::Schema->connect;
 
 subtest standard => sub {
     my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema);
+    is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
     my @relations = $result_handler->get_relations('author_id');
@@ -27,6 +29,7 @@ subtest standard => sub {
 
 subtest wanted => sub {
     my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema, wanted_result_source_names => ['Author'], degrees_of_separation => 1);
+    is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
     my @relations = $result_handler->get_relations('author_id');
@@ -41,6 +44,7 @@ subtest wanted => sub {
 };
 subtest skipped => sub {
     my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema, skip_result_source_names => ['Book'], degrees_of_separation => 10);
+    is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
     my @relations = $result_handler->get_relations('author_id');
