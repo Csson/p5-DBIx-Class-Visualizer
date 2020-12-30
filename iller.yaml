@@ -23,7 +23,6 @@ prereqs:
       - JSON::MaybeXS
       - Log::Handler: 0.84
       - PerlX::Maybe
-      - ReadonlyX: 1.03
       - Syntax::Keyword::Gather: 1.002000
       - Types::Standard
     recommends:
