@@ -16,6 +16,7 @@ use Syntax::Keyword::Gather;
 use JSON::MaybeXS qw/encode_json/;
 use PerlX::Maybe;
 use DBIx::Class::Visualizer::ResultHandler;
+use Graph;
 
 our %GRAPHVIZ_CONF = (
     global => {
@@ -98,6 +99,61 @@ has only_keys => (
     isa => Bool,
     default => 0,
 );
+
+sub _accumulate_edge_info {
+    my ($source_name, $rs, $source2dest2rels) = @_;
+    for my $r ($rs->relationships) {
+        my $info = $rs->relationship_info($r);
+        my ($cond, $dest, $attrs) = @$info{qw(cond source attrs)};
+        $cond = +{ map +(%$_), @$cond } if ref $cond eq 'ARRAY'; # close enough
+        $cond = +{ map {
+            my ($foreign, $mine) = ($_, $cond->{$_});
+            s#^(self|foreign)\.## for $mine, $foreign;
+            +($foreign => $mine);
+        } keys %$cond };
+        $dest =~ s{^.*?::Result::}{};
+        my $type = DBIx::Class::Visualizer::Relation::_attr2relation_type($attrs);
+        $source2dest2rels->{$source_name}{$dest}{$r} = { cond => $cond, type => $type };
+    }
+}
+
+has as_graph => (
+    is => 'lazy',
+);
+sub _build_as_graph {
+    my $self = shift;
+    my $g = Graph->new(multiedged => 1);
+    my %source2dest2rels;
+    for my $source_name (sort $self->schema->sources) {
+        my $rs = $self->schema->resultset($source_name)->result_source;
+        my @fk = grep $rs->column_info($_)->{is_foreign_key}, my @cols = $rs->columns;
+        $g->set_vertex_attributes($source_name, {
+            primary_keys => [ $rs->primary_columns ],
+            foreign_keys => \@fk,
+            columns => \@cols,
+        });
+        _accumulate_edge_info($source_name, $rs, \%source2dest2rels);
+    }
+    for my $s ($g->vertices) {
+        my $d2r = $source2dest2rels{$s};
+        for my $d (keys %$d2r) {
+            my $rels = $d2r->{$d};
+            for my $rel_name (keys %$rels) {
+                my $rel = $rels->{$rel_name};
+                my %fk2mine = %{ $rel->{cond} };
+                for my $fk (keys %fk2mine) {
+                    my $mine = $fk2mine{$fk};
+                    $g->set_edge_attributes_by_id($s, $d, "$rel_name.$fk", {
+                        type => $rel->{type},
+                        from_key => $mine,
+                        to_key => $fk,
+                    });
+                }
+            }
+        }
+    }
+    $g;
+}
 
 has result_handlers => (
     is => 'lazy',
@@ -576,6 +632,11 @@ After L</new> has run it can be useful if, for example, you wish to see the argu
     my $svg = $visualizer->svg;
 
     my $dotfile = $visualizer->graph->dot_input;
+
+=head2 as_graph
+
+Optional, and it is recommended you don't provide so it will be
+lazy-built. A L<Graph> object representing the schema.
 
 =head1 METHODS
 

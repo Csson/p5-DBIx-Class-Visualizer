@@ -17,6 +17,7 @@ prereqs:
     requires:
       - perl: 5.010001
       - GraphViz2: 2.62
+      - Graph: 0.9714
       - List::Util
       - DateTime::Tiny: 1.06
       - Moo: 2.00

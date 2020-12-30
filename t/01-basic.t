@@ -15,6 +15,7 @@ subtest standard => sub {
     is_deeply [ map $_->name, grep $_->show, @{ $vis->result_handlers } ],
         [ qw(Author AuthorThing Book BookAuthor ResultSourceWithMissingRelation) ];
     is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
+    is_deeply_snapshot [ $vis->as_graph->as_hashes ], 'graph as_hashes';
     my $result_handler = $vis->result_handler('Author');
 
     my @relations = $result_handler->get_relations('id');
