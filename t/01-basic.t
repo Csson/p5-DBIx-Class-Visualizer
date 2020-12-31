@@ -15,14 +15,14 @@ subtest standard => sub {
     is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
-    my @relations = $result_handler->get_relations('author_id');
+    my @relations = $result_handler->get_relations('id');
 
     my $book_author_relation = (grep { $_->destination_table eq 'BookAuthor'} @relations)[0];
     my $author_thing_relation = (grep { $_->destination_table eq 'AuthorThing'} @relations)[0];
 
     is $book_author_relation->relation_type, 'has_many', 'Correct relation type';
     ok $book_author_relation->added_to_graph, 'Relation is added';
-    is $vis->result_handler('BookAuthor')->get_relation_between('author_id', 'Author', 'author_id')->relation_type, 'belongs_to', 'Correct reverse relation type';
+    is $vis->result_handler('BookAuthor')->get_relation_between('author_id', 'Author', 'id')->relation_type, 'belongs_to', 'Correct reverse relation type';
 
     is $author_thing_relation->arrow_type, 'vee', 'Correct arrow type';
 };
@@ -32,7 +32,7 @@ subtest wanted => sub {
     is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
-    my @relations = $result_handler->get_relations('author_id');
+    my @relations = $result_handler->get_relations('id');
     my $book_author_relation = (grep { $_->destination_table eq 'BookAuthor'} @relations)[0];
     is $book_author_relation->relation_type, 'has_many', 'Correct relation type';
     ok $book_author_relation->added_to_graph, 'Relation is added';
@@ -47,7 +47,7 @@ subtest skipped => sub {
     is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
-    my @relations = $result_handler->get_relations('author_id');
+    my @relations = $result_handler->get_relations('id');
     my $book_author_relation = (grep { $_->destination_table eq 'BookAuthor'} @relations)[0];
     is $book_author_relation->relation_type, 'has_many', 'Correct relation type';
     ok $book_author_relation->added_to_graph, 'Relation is added';
