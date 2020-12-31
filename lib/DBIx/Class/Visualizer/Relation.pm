@@ -78,15 +78,20 @@ around BUILDARGS => sub {
         $args{ $cascade } = $attr->{ $cascade } if exists $attr->{ $cascade };
     }
 
-    # do not reorder
-    $args{'relation_type'} = $attr->{'accessor'} eq 'multi' ? 'has_many'
-                           : $attr->{'is_depends_on'}       ? 'belongs_to'
-                           : exists $attr->{'join_type'}    ? 'might_have'
-                           :                                  'has_one'
-                           ;
+    $args{'relation_type'} = _attr2relation_type($attr);
 
     $class->$orig(%args);
 };
+
+sub _attr2relation_type {
+    my ($attr) = @_;
+    # do not reorder
+    $attr->{'accessor'} eq 'multi'    ? 'has_many'
+        : $attr->{'is_depends_on'}    ? 'belongs_to'
+        : exists $attr->{'join_type'} ? 'might_have'
+        :                               'has_one'
+        ;
+}
 
 sub is_belongs_to { shift->relation_type eq 'belongs_to' }
 
