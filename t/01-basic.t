@@ -12,6 +12,8 @@ my $schema = TestFor::DbicVisualizer::Schema->connect;
 
 subtest standard => sub {
     my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema);
+    is_deeply [ map $_->name, grep $_->show, @{ $vis->result_handlers } ],
+        [ qw(Author AuthorThing Book BookAuthor ResultSourceWithMissingRelation) ];
     is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
@@ -29,6 +31,8 @@ subtest standard => sub {
 
 subtest wanted => sub {
     my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema, wanted_result_source_names => ['Author'], degrees_of_separation => 1);
+    is_deeply [ map $_->name, grep $_->show, @{ $vis->result_handlers } ],
+        [ qw(Author) ];
     is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
@@ -44,6 +48,8 @@ subtest wanted => sub {
 };
 subtest skipped => sub {
     my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema, skip_result_source_names => ['Book'], degrees_of_separation => 10);
+    is_deeply [ map $_->name, grep $_->show, @{ $vis->result_handlers } ],
+        [ qw(Author AuthorThing BookAuthor ResultSourceWithMissingRelation) ];
     is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
