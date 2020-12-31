@@ -111,27 +111,33 @@ has has_warned_for_polylines => (
     isa => Bool,
 );
 
+has _showable_sources => (
+    is => 'lazy',
+);
+sub _build__showable_sources {
+    my ($self) = @_;
+    my %src; @src{ $self->schema->sources } = ();
+    my %wanted; @wanted{ @{ $self->wanted_result_source_names } } = ();
+    my %skip; @skip{ @{ $self->skip_result_source_names } } = ();
+    return [ \%wanted, \%skip, +{ map +($_=>undef), grep exists $wanted{$_}, keys %src } ] if keys %wanted;
+    delete @src{ keys %skip };
+    [ \%wanted, \%skip, \%src ];
+}
+
 sub _build_result_handlers {
     my $self = shift;
 
+    my ($wanted, $skip, $show) = @{ $self->_showable_sources };
     return [
         gather {
             SOURCE:
             for my $source_name (sort $self->schema->sources) {
-                my $show = !$self->has_skip_result_source_names && !$self->has_wanted_result_source_names ? 1
-                         : (any { $source_name eq $_ } @{ $self->wanted_result_source_names })            ? 1
-                         : $self->has_wanted_result_source_names                                          ? 0
-                         : (any { $source_name eq $_ } @{ $self->skip_result_source_names })              ? 0
-                         : $self->has_skip_result_source_names                                            ? 1
-                         :                                                                                  0
-                         ;
-
                 take(DBIx::Class::Visualizer::ResultHandler->new(
                     name => $source_name,
-                    show => $show,
-                    wanted => (any { $source_name eq $_ } (@{ $self->wanted_result_source_names })) ? 1 : 0,
-                    skip => (any { $source_name eq $_ } (@{ $self->skip_result_source_names }))     ? 1 : 0,
-                    rs   => $self->schema->resultset($source_name)->result_source,
+                    show => exists $show->{ $source_name } ? 1 : 0,
+                    wanted => exists $wanted->{ $source_name } ? 1 : 0,
+                    skip => exists $skip->{ $source_name } ? 1 : 0,
+                    rs => $self->schema->resultset($source_name)->result_source,
                     only_keys => $self->only_keys,
                 ));
             }
