@@ -155,6 +155,41 @@ sub _build_as_graph {
     $g;
 }
 
+sub graphvizify {
+    my ($og) = @_;
+    my $g = $og->deep_copy;
+    $g->set_graph_attribute(graphviz => \%GRAPHVIZ_CONF);
+    for my $v ($g->vertices) {
+        my $attr = $g->get_vertex_attributes($v);
+        my %is_pk = map +($_=>1), @{ $attr->{primary_keys} };
+        my %is_fk = map +($_=>1), @{ $attr->{foreign_keys} };
+        $g->set_vertex_attribute($v, graphviz => { label =>
+            _gen_html($v, [ map [ $_, $is_pk{$_}, $is_fk{$_} ], @{ $attr->{columns} } ]),
+        });
+    }
+    for my $e (map $_->[1], sort {$a->[0] cmp $b->[0]} map ["@$_", $_], $g->unique_edges) {
+        next if !$g->has_edge(@$e); # deleted, skip
+        for my $id ($g->get_multiedge_ids(@$e)) {
+            my ($from_key, $to_key, $type) = @{ $g->get_edge_attributes_by_id(@$e, $id) }{qw(from_key to_key type)};
+            my %edgespec = (
+                arrowhead => $DBIx::Class::Visualizer::Relation::RELATION_TO_ARROW{$type},
+                tailport => $from_key,
+                headport => $to_key,
+            );
+            my @r_e = reverse @$e;
+            my ($converse_id) = grep $g->get_edge_attribute_by_id(@r_e, $_, 'to_key') eq $from_key, sort $g->get_multiedge_ids(@r_e);
+            $g->set_edge_attribute_by_id(@$e, $id, graphviz => \%edgespec), next
+                if !defined $converse_id; # no match
+            $g->delete_edge_by_id(@$e, $id), next if $type eq 'belongs_to'; # favour other
+            my $other_type = $g->get_edge_attribute_by_id(@r_e, $converse_id, 'type');
+            @edgespec{qw(arrowtail dir)} = ($DBIx::Class::Visualizer::Relation::RELATION_TO_ARROW{$other_type}, 'both');
+            $g->set_edge_attribute_by_id(@$e, $id, graphviz => \%edgespec);
+            $g->delete_edge_by_id(@r_e, $converse_id);
+        }
+    }
+    $g;
+}
+
 has result_handlers => (
     is => 'lazy',
     isa => ArrayRef[Maybe[InstanceOf['DBIx::Class::Visualizer::ResultHandler']]],

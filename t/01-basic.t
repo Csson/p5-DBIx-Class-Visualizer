@@ -16,6 +16,9 @@ subtest standard => sub {
         [ qw(Author AuthorThing Book BookAuthor ResultSourceWithMissingRelation) ];
     is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     is_deeply_snapshot [ $vis->as_graph->as_hashes ], 'graph as_hashes';
+    my $g = DBIx::Class::Visualizer::graphvizify($vis->as_graph);
+    my $gv = GraphViz2->from_graph($g);
+    is_deeply_snapshot $gv->dot_input, 'graphvizify dot_input';
     my $result_handler = $vis->result_handler('Author');
 
     my @relations = $result_handler->get_relations('id');

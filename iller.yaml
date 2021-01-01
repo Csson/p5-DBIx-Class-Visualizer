@@ -16,7 +16,7 @@ prereqs:
   runtime:
     requires:
       - perl: 5.010001
-      - GraphViz2: 2.62
+      - GraphViz2: 2.64 # handle multigraphs
       - Graph: 0.9714
       - List::Util
       - DateTime::Tiny: 1.06
