@@ -17,6 +17,28 @@ use JSON::MaybeXS qw/encode_json/;
 use PerlX::Maybe;
 use DBIx::Class::Visualizer::ResultHandler;
 
+our %GRAPHVIZ_CONF = (
+    global => {
+        combine_node_and_port => 0,
+        directed => 1,
+        smoothing => 'none',
+        overlap => 'false',
+    },
+    graph => {
+        rankdir => 'LR',
+        splines => 'true',
+        fontname => 'helvetica',
+        fontsize => 7,
+        labeljust => 'l',
+        nodesep => 0.38,
+        ranksep => 0.46,
+    },
+    node => {
+        fontname => 'helvetica',
+        shape => 'none',
+    },
+);
+
 has logger_conf => (
     is => 'ro',
     isa => ArrayRef,
@@ -41,32 +63,7 @@ has logger => (
 has graphviz_conf => (
     is => 'ro',
     lazy => 1,
-    default => sub {
-        my $self = shift;
-
-        return +{
-            global => {
-                combine_node_and_port => 0,
-                directed => 1,
-                smoothing => 'none',
-                overlap => 'false',
-                logger => $self->logger,
-            },
-            graph => {
-                rankdir => 'LR',
-                splines => 'true',
-                fontname => 'helvetica',
-                fontsize => 7,
-                labeljust => 'l',
-                nodesep => 0.38,
-                ranksep => 0.46,
-            },
-            node => {
-                fontname => 'helvetica',
-                shape => 'none',
-            },
-        };
-    },
+    default => sub { \%GRAPHVIZ_CONF },
 );
 
 has graphviz => (
