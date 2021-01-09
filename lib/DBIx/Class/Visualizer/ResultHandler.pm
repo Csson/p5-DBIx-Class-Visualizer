@@ -40,10 +40,8 @@ has skip => (
     default => 0,
 );
 has columns => (
-    is => 'ro',
+    is => 'lazy',
     isa => ArrayRef[InstanceOf['DBIx::Class::Visualizer::Column']],
-    lazy => 1,
-    builder => 1,
 );
 has only_keys => (
     is => 'ro',
@@ -51,10 +49,8 @@ has only_keys => (
     default => 0,
 );
 has relations => (
-    is => 'ro',
+    is => 'lazy',
     isa => ArrayRef[InstanceOf['DBIx::Class::Visualizer::Relation']],
-    lazy => 1,
-    builder => 1,
 );
 has _degree_of_separation => (
     is => 'rw',
@@ -136,13 +132,6 @@ sub get_column {
     my $self = shift;
     my $column_name = shift;
     return (grep { $column_name eq $_->name } @{ $self->columns })[0];
-}
-
-# Node names can't have colons in them.
-sub node_name {
-    my $node_name = shift->name;
-    $node_name =~ s{::}{__}g;
-    return $node_name;
 }
 
 1;

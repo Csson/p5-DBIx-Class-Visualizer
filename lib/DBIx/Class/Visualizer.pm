@@ -9,14 +9,36 @@ package DBIx::Class::Visualizer;
 our $VERSION = '0.0201';
 
 use Moo;
-use GraphViz2;
 use Log::Handler;
 use List::Util qw/any none/;
-use Types::Standard qw/ArrayRef RegexpRef Maybe HashRef InstanceOf Bool/;
+use Types::Standard qw/ArrayRef Maybe InstanceOf Bool/;
 use Syntax::Keyword::Gather;
 use JSON::MaybeXS qw/encode_json/;
 use PerlX::Maybe;
 use DBIx::Class::Visualizer::ResultHandler;
+use Graph;
+
+our %GRAPHVIZ_CONF = (
+    global => {
+        combine_node_and_port => 0,
+        directed => 1,
+        smoothing => 'none',
+        overlap => 'false',
+    },
+    graph => {
+        rankdir => 'LR',
+        splines => 'true',
+        fontname => 'helvetica',
+        fontsize => 7,
+        labeljust => 'l',
+        nodesep => 0.38,
+        ranksep => 0.46,
+    },
+    node => {
+        fontname => 'helvetica',
+        shape => 'none',
+    },
+);
 
 has logger_conf => (
     is => 'ro',
@@ -42,41 +64,18 @@ has logger => (
 has graphviz_conf => (
     is => 'ro',
     lazy => 1,
-    default => sub {
-        my $self = shift;
+    default => sub { \%GRAPHVIZ_CONF },
+);
 
-        return +{
-            global => {
-                directed => 1,
-                smoothing => 'none',
-                overlap => 'false',
-                logger => $self->logger,
-            },
-            graph => {
-                rankdir => 'LR',
-                splines => 'true',
-                fontname => 'helvetica',
-                fontsize => 7,
-                labeljust => 'l',
-                nodesep => 0.38,
-                ranksep => 0.46,
-            },
-            node => {
-                fontname => 'helvetica',
-                shape => 'none',
-            },
-        };
-    },
+has graphviz => (
+    is => 'lazy',
+    init_arg => 'graph',
 );
-has graph => (
-    is => 'ro',
-    lazy => 1,
-    builder => '_build_graph',
-    handles => [qw/run/],
-);
-sub _build_graph {
+sub _build_graphviz {
+    require GraphViz2;
     return GraphViz2->new(shift->graphviz_conf);
 }
+
 has schema => (
     is => 'ro',
     required => 1,
@@ -101,39 +100,132 @@ has only_keys => (
     default => 0,
 );
 
+sub _accumulate_edge_info {
+    my ($source_name, $rs, $source2dest2rels) = @_;
+    for my $r ($rs->relationships) {
+        my $info = $rs->relationship_info($r);
+        my ($cond, $dest, $attrs) = @$info{qw(cond source attrs)};
+        $cond = +{ map +(%$_), @$cond } if ref $cond eq 'ARRAY'; # close enough
+        $cond = +{ map {
+            my ($foreign, $mine) = ($_, $cond->{$_});
+            s#^(self|foreign)\.## for $mine, $foreign;
+            +($foreign => $mine);
+        } keys %$cond };
+        $dest =~ s{^.*?::Result::}{};
+        my $type = DBIx::Class::Visualizer::Relation::_attr2relation_type($attrs);
+        $source2dest2rels->{$source_name}{$dest}{$r} = { cond => $cond, type => $type };
+    }
+}
+
+has as_graph => (
+    is => 'lazy',
+);
+sub _build_as_graph {
+    my $self = shift;
+    my $g = Graph->new(multiedged => 1);
+    my %source2dest2rels;
+    for my $source_name (sort $self->schema->sources) {
+        my $rs = $self->schema->resultset($source_name)->result_source;
+        my @fk = grep $rs->column_info($_)->{is_foreign_key}, my @cols = $rs->columns;
+        $g->set_vertex_attributes($source_name, {
+            primary_keys => [ $rs->primary_columns ],
+            foreign_keys => \@fk,
+            columns => \@cols,
+        });
+        _accumulate_edge_info($source_name, $rs, \%source2dest2rels);
+    }
+    for my $s ($g->vertices) {
+        my $d2r = $source2dest2rels{$s};
+        for my $d (keys %$d2r) {
+            my $rels = $d2r->{$d};
+            for my $rel_name (keys %$rels) {
+                my $rel = $rels->{$rel_name};
+                my %fk2mine = %{ $rel->{cond} };
+                for my $fk (keys %fk2mine) {
+                    my $mine = $fk2mine{$fk};
+                    $g->set_edge_attributes_by_id($s, $d, "$rel_name.$fk", {
+                        type => $rel->{type},
+                        from_key => $mine,
+                        to_key => $fk,
+                    });
+                }
+            }
+        }
+    }
+    $g;
+}
+
+sub graphvizify {
+    my ($og) = @_;
+    my $g = $og->deep_copy;
+    $g->set_graph_attribute(graphviz => \%GRAPHVIZ_CONF);
+    for my $v ($g->vertices) {
+        my $attr = $g->get_vertex_attributes($v);
+        my %is_pk = map +($_=>1), @{ $attr->{primary_keys} };
+        my %is_fk = map +($_=>1), @{ $attr->{foreign_keys} };
+        $g->set_vertex_attribute($v, graphviz => { label =>
+            _gen_html($v, [ map [ $_, $is_pk{$_}, $is_fk{$_} ], @{ $attr->{columns} } ]),
+        });
+    }
+    for my $e (map $_->[1], sort {$a->[0] cmp $b->[0]} map ["@$_", $_], $g->unique_edges) {
+        next if !$g->has_edge(@$e); # deleted, skip
+        for my $id ($g->get_multiedge_ids(@$e)) {
+            my ($from_key, $to_key, $type) = @{ $g->get_edge_attributes_by_id(@$e, $id) }{qw(from_key to_key type)};
+            my %edgespec = (
+                arrowhead => $DBIx::Class::Visualizer::Relation::RELATION_TO_ARROW{$type},
+                tailport => $from_key,
+                headport => $to_key,
+            );
+            my @r_e = reverse @$e;
+            my ($converse_id) = grep $g->get_edge_attribute_by_id(@r_e, $_, 'to_key') eq $from_key, sort $g->get_multiedge_ids(@r_e);
+            $g->set_edge_attribute_by_id(@$e, $id, graphviz => \%edgespec), next
+                if !defined $converse_id; # no match
+            $g->delete_edge_by_id(@$e, $id), next if $type eq 'belongs_to'; # favour other
+            my $other_type = $g->get_edge_attribute_by_id(@r_e, $converse_id, 'type');
+            @edgespec{qw(arrowtail dir)} = ($DBIx::Class::Visualizer::Relation::RELATION_TO_ARROW{$other_type}, 'both');
+            $g->set_edge_attribute_by_id(@$e, $id, graphviz => \%edgespec);
+            $g->delete_edge_by_id(@r_e, $converse_id);
+        }
+    }
+    $g;
+}
+
 has result_handlers => (
-    is => 'ro',
+    is => 'lazy',
     isa => ArrayRef[Maybe[InstanceOf['DBIx::Class::Visualizer::ResultHandler']]],
-    lazy => 1,
-    builder => 1,
 );
 has has_warned_for_polylines => (
     is => 'rw',
     isa => Bool,
-    lazy => 1,
 );
+
+has _showable_sources => (
+    is => 'lazy',
+);
+sub _build__showable_sources {
+    my ($self) = @_;
+    my %src; @src{ $self->schema->sources } = ();
+    my %wanted; @wanted{ @{ $self->wanted_result_source_names } } = ();
+    my %skip; @skip{ @{ $self->skip_result_source_names } } = ();
+    return [ \%wanted, \%skip, +{ map +($_=>undef), grep exists $wanted{$_}, keys %src } ] if keys %wanted;
+    delete @src{ keys %skip };
+    [ \%wanted, \%skip, \%src ];
+}
 
 sub _build_result_handlers {
     my $self = shift;
 
+    my ($wanted, $skip, $show) = @{ $self->_showable_sources };
     return [
         gather {
             SOURCE:
             for my $source_name (sort $self->schema->sources) {
-                my $show = !$self->has_skip_result_source_names && !$self->has_wanted_result_source_names ? 1
-                         : (any { $source_name eq $_ } @{ $self->wanted_result_source_names })            ? 1
-                         : $self->has_wanted_result_source_names                                          ? 0
-                         : (any { $source_name eq $_ } @{ $self->skip_result_source_names })              ? 0
-                         : $self->has_skip_result_source_names                                            ? 1
-                         :                                                                                  0
-                         ;
-
                 take(DBIx::Class::Visualizer::ResultHandler->new(
                     name => $source_name,
-                    show => $show,
-                    wanted => (any { $source_name eq $_ } (@{ $self->wanted_result_source_names })) ? 1 : 0,
-                    skip => (any { $source_name eq $_ } (@{ $self->skip_result_source_names }))     ? 1 : 0,
-                    rs   => $self->schema->resultset($source_name)->result_source,
+                    show => exists $show->{ $source_name } ? 1 : 0,
+                    wanted => exists $wanted->{ $source_name } ? 1 : 0,
+                    skip => exists $skip->{ $source_name } ? 1 : 0,
+                    rs => $self->schema->resultset($source_name)->result_source,
                     only_keys => $self->only_keys,
                 ));
             }
@@ -161,7 +253,12 @@ sub any_result_handler_is_wanted {
     return scalar grep { $_->wanted } @result_handlers;
 }
 
-sub BUILD {
+has graph => (
+    is => 'lazy',
+    handles => [qw/run/],
+    init_arg => undef,
+);
+sub _build_graph {
     my $self = shift;
 
     if($self->has_wanted_result_source_names) {
@@ -183,9 +280,60 @@ sub BUILD {
         }
     }
 
-    $self->add_node($_)  for $self->showable_result_handlers;
-    $self->add_edges($_) for $self->showable_result_handlers;
-
+    my %rel_added;
+    for my $handler ($self->showable_result_handlers) {
+        $self->graphviz->add_node(
+            name => $handler->name,
+            label => _gen_html($handler->name, [ map [ $_->name, @$_{qw(is_primary_key is_foreign_key)} ], @{ $handler->columns } ]),
+            margin => 0.01,
+        );
+        my @columns = map $_->[1], sort { $a->[0] cmp $b->[0] }
+            map [$_->name, $_], @{ $handler->columns };
+        COLUMN:
+        for my $column (@columns) {
+            my @relations = map $_->[1], sort { $a->[0] cmp $b->[0] }
+                map {
+                    my $r = $_;
+                    [join(' ', map $r->$_, qw(origin_table origin_column destination_table destination_column)), $_]
+                } @{ $column->relations };
+            RELATION:
+            for my $relation (@relations) {
+                next RELATION if $rel_added{$relation};
+                my $reverse_result_handler = $self->result_handler($relation->destination_table);
+                next RELATION if !$reverse_result_handler->show;
+                my $reverse_relation = $reverse_result_handler->get_relation_between($relation->destination_column, $handler->name, $column->name);
+                next RELATION if !defined $reverse_relation;
+                next RELATION if $rel_added{$reverse_relation};
+                my @handler = ($handler, $reverse_result_handler);
+                my @relation = ($relation, $reverse_relation);
+                # If we have any 'wanted' result sources
+                # *and* any of the two involved result_handlers are wanted
+                # *and* the origin relation belongs_to the other
+                # -> invert the edge direction.
+                # (this places nodes that has_many to the current node on the left
+                # and nodes that belongs_to to the current node on the right.)
+                my $switched = $self->has_wanted_result_source_names
+                               && $self->any_result_handler_is_wanted(@handler)
+                               && $relation[0]->is_belongs_to;
+                @handler = reverse @handler if $switched;
+                @relation = reverse @relation if $switched;
+                $self->graphviz->add_edge(
+                    from      => $handler[0]->name,
+                    to        => $handler[1]->name,
+                    tailport  => $relation[0]->origin_column,
+                    headport  => $relation[0]->destination_column,
+                    arrowtail => $relation[1]->arrow_type,
+                    arrowhead => $relation[0]->arrow_type,
+                    dir       => 'both',
+                    minlen    => 2,
+                    penwidth  => 2,
+                );
+                $_->added_to_graph(1) for $relation, $reverse_relation;
+                @rel_added{ $relation, $reverse_relation } = (1, 1);
+            }
+        }
+    }
+    $self->graphviz;
 }
 
 sub svg {
@@ -258,18 +406,18 @@ sub transformed_svg {
         my $node = shift;
         my $result_handler = $self->result_handler($node->at('text.table-name')->all_text);
         $node->attr('data-table-name', $result_handler->name);
-        $node->attr(id => 'node-'.$result_handler->node_name);
+        $node->attr(id => 'node-'.$result_handler->name);
 
         $node->find('text.column-name')->each(sub {
             my $el = shift;
             my $column_name = $el->all_text;
             $el->attr('data-column-name', $column_name);
-            $el->attr(id => 'column-'.$result_handler->node_name . '-' . $column_name);
+            $el->attr(id => 'column-'.$result_handler->name . '-' . $column_name);
             my $polygon = $el->previous;
 
             # background polygon
             $polygon->attr('data-column-name', $column_name);
-            $polygon->attr(id => 'bg-column-'.$result_handler->node_name . '-' . $column_name);
+            $polygon->attr(id => 'bg-column-'.$result_handler->name . '-' . $column_name);
 
             $el->attr('data-column-info', encode_json($result_handler->get_column($column_name)->TO_JSON));
         });
@@ -331,15 +479,11 @@ sub transformed_svg {
         my $edge = shift;
         my $title = $edge->at('title');
 
-        if($title->text =~ m{ ^ ([^:]+) : ([^-]+?) -> ([^:;]+) : (.+) $ }x) {
+        if($title->text =~ m{ ^ (\S+) : ([^-]+?) -> (\S+) : (.+) $ }x) {
             my $origin_table = $1;
             my $origin_column = $2;
             my $destination_table = $3;
             my $destination_column = $4;
-
-            # Restore table names. See also node_name()
-            $origin_table =~ s{__}{::}g;
-            $destination_table =~ s{__}{::}g;
 
             my $relation_type = $self->result_handler($origin_table)->get_relation_between($origin_column, $destination_table, $destination_column)->relation_type;
             my $reverse_relation_type = $self->result_handler($destination_table)->get_relation_between($destination_column, $origin_table, $origin_column)->relation_type;
@@ -416,120 +560,32 @@ sub transformed_svg {
 
 }
 
-sub add_node {
-    my $self = shift;
-    my $result_handler = shift;
-
-    $self->graph->add_node(
-        name => $result_handler->node_name,
-        label => $self->create_label_html($result_handler),
-        margin => 0.01,
-    );
+sub _column_html {
+    my ($name, $is_pk, $is_fk) = @_;
+    my $tag = $name;
+    $tag = "<b>$tag</b>" if $is_pk;
+    $tag = "<u>$tag</u>" if $is_fk;
+    my $name_pad = padding($name);
+    qq{
+            <tr><td align="left" port="$name" bgcolor="#fefefe"> <font point-size="10" color="#222222">$tag</font><font color="white">_$name_pad</font></td></tr>};
 }
 
-sub add_edges {
-    my $self = shift;
-    my $result_handler = shift;
-
-    my $rs = $result_handler->rs;
-
-    COLUMN:
-    for my $column (@{ $result_handler->columns }) {
-
-        RELATION:
-        for my $relation (@{ $column->relations }) {
-            next RELATION if $relation->added_to_graph;
-
-            my $reverse_result_handler = $self->result_handler($relation->destination_table);
-            next RELATION if !$reverse_result_handler->show;
-
-            my $reverse_relation = $reverse_result_handler->get_relation_between($relation->destination_column, $result_handler->name, $column->name);
-
-            # If the reverse relation is complicated (as in not a hashref with one key (and one key only))
-            # or if it is just missing
-            next RELATION if !defined $reverse_relation;
-
-            next RELATION if $reverse_relation->added_to_graph;
-            $self->add_edge($result_handler, $relation, $reverse_result_handler, $reverse_relation);
-
-            $relation->added_to_graph(1);
-            $reverse_relation->added_to_graph(1);
-        }
-    }
-}
-sub add_edge {
-    my $self = shift;
-    my $result_handler = shift;
-    my $relation = shift;
-    my $reverse_result_handler = shift;
-    my $reverse_relation = shift;
-
-    # We need the arrow setting before possibly
-    # inverting the relationships. The arrows
-    # should be the same regardless of the direction
-    # of the relationship.
-    my $arrowtail = $reverse_relation->arrow_type;
-    my $arrowhead = $relation->arrow_type;
-
-    # If we have any 'wanted' result sources
-    # *and* any of the two involved result_handlers are wanted
-    # *and* the origin relation belongs_to the other
-    # -> invert the edge direction.
-    # (this places nodes that has_many to the current node on the left
-    # and nodes that belongs_to to the current node on the right.)
-    my $switched = $self->has_wanted_result_source_names
-                   && $self->any_result_handler_is_wanted($result_handler, $reverse_result_handler)
-                   && $relation->is_belongs_to;
-
-    my %edge = (
-        from      => ($switched ? $reverse_result_handler : $result_handler)->node_name,
-        to        => ($switched ? $result_handler : $reverse_result_handler)->node_name,
-        tailport  => ($switched ? $reverse_relation : $relation)->origin_column,
-        headport  => ($switched ? $reverse_relation : $relation)->destination_column,
-        arrowtail => ($switched ? $relation : $reverse_relation)->arrow_type,
-        arrowhead => ($switched ? $reverse_relation : $relation)->arrow_type,
-        dir       => 'both',
-        minlen    => 2,
-        penwidth  => 2,
-    );
-
-    $self->graph->add_edge(%edge);
-}
-
-sub create_label_html {
-    my $self = shift;
-    my $result_handler = shift;
-
-    my $source_name = $result_handler->name;
-    my $node_name = $result_handler->node_name;
-
-    my @column_html = gather {
-        for my $column (@{ $result_handler->columns }) {
-
-            my $column_name_tag = $column->column_name_label_tag;
-
-            take qq{
-            <tr><td align="left" port="@{[ $column->name ]}" bgcolor="#fefefe"> <font point-size="10" color="#222222">$column_name_tag</font><font color="white">_@{[ $self->padding($column->name) ]}</font></td></tr>};
-        }
-    };
-
+sub _gen_html {
+    my ($source_name, $col_infos) = @_;
     # Don't change colors here without fixing svg(). Magic numbers..
-    my $html = qq{
+    qq{
         <<table cellborder="0" cellpadding="0.8" cellspacing="0" border="1" color="#f0f0f0" width="150">
             <tr><td bgcolor="#DDDFDD" width="150"><font point-size="2"> </font></td></tr>
-            <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>$source_name</b></font><font color="white">_@{[ $self->padding($source_name) ]}</font></td></tr>
+            <tr><td align="left" bgcolor="#DDDFDD"> <font color="#333333"><b>$source_name</b></font><font color="white">_@{[ padding($source_name) ]}</font></td></tr>
             <tr><td><font point-size="3"> </font></td></tr>
-            } . join ('', @column_html) . qq{
+            } . join ('', map _column_html(@$_), @$col_infos) . qq{
         </table>>
     };
-    return $html;
 }
 
 # graphviz (at least sometimes) draws too small boxes. We pad them a little (and remove the padding in svg())
 sub padding {
-    my $self = shift;
     my $text = shift;
-
     return '_' x int (length ($text) / 10);
 }
 
@@ -605,12 +661,17 @@ Won't be used if you pass C<graph> to the constructor.
 
 Optional. A L<GraphViz2> object. Pass this if you need to use an already constructed graph.
 
-After L</new> has run it can be useful if you, for example, wishes to see the arguments to the dot renderer:
+After L</new> has run it can be useful if, for example, you wish to see the arguments to the dot renderer:
 
     my $visualizer = DBIx::Class::Visualizer->new(schema => $schema);
     my $svg = $visualizer->svg;
 
     my $dotfile = $visualizer->graph->dot_input;
+
+=head2 as_graph
+
+Optional, and it is recommended you don't provide so it will be
+lazy-built. A L<Graph> object representing the schema.
 
 =head1 METHODS
 

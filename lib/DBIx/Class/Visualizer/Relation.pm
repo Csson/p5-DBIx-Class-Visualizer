@@ -9,14 +9,15 @@ package DBIx::Class::Visualizer::Relation;
 our $VERSION = '0.0201';
 
 use Moo;
-use ReadonlyX;
 use Types::Standard qw/Str Bool Enum/;
 use PerlX::Maybe qw/provided/;
 
-Readonly::Scalar my $HAS_MANY => 'has_many';
-Readonly::Scalar my $BELONGS_TO => 'belongs_to';
-Readonly::Scalar my $HAS_ONE => 'has_one';
-Readonly::Scalar my $MIGHT_HAVE => 'might_have';
+our %RELATION_TO_ARROW = (
+    has_many => join('', qw/crow none odot/),
+    belongs_to => join('', qw/none tee/),
+    might_have => join('', qw/none tee none odot/),
+    has_one => join('', qw/vee/),
+);
 
 has added_to_graph => (
     is => 'rw',
@@ -54,9 +55,10 @@ has cascade_update => (
     isa => Bool,
     predicate => 1,
 );
+
 has relation_type => (
     is => 'ro',
-    isa => Enum[qw/has_many has_one belongs_to might_have/],
+    isa => Enum[ keys %RELATION_TO_ARROW ],
     required => 1,
 );
 
@@ -76,27 +78,26 @@ around BUILDARGS => sub {
         $args{ $cascade } = $attr->{ $cascade } if exists $attr->{ $cascade };
     }
 
-    # do not reorder
-    $args{'relation_type'} = $attr->{'accessor'} eq 'multi' ? $HAS_MANY
-                           : $attr->{'is_depends_on'}       ? $BELONGS_TO
-                           : exists $attr->{'join_type'}    ? $MIGHT_HAVE
-                           :                                  $HAS_ONE
-                           ;
+    $args{'relation_type'} = _attr2relation_type($attr);
 
     $class->$orig(%args);
 };
 
-sub is_belongs_to { shift->relation_type eq $BELONGS_TO }
+sub _attr2relation_type {
+    my ($attr) = @_;
+    # do not reorder
+    $attr->{'accessor'} eq 'multi'    ? 'has_many'
+        : $attr->{'is_depends_on'}    ? 'belongs_to'
+        : exists $attr->{'join_type'} ? 'might_have'
+        :                               'has_one'
+        ;
+}
+
+sub is_belongs_to { shift->relation_type eq 'belongs_to' }
 
 sub arrow_type {
     my $self = shift;
-
-    return join '', $self->relation_type eq $HAS_MANY   ? qw/crow none odot/
-                  : $self->relation_type eq $BELONGS_TO ? qw/none tee/
-                  : $self->relation_type eq $MIGHT_HAVE ? qw/none tee none odot/
-                  : $self->relation_type eq $HAS_ONE    ? qw/vee/
-                  :                                       qw/dot dot dot/
-                  ;
+    $RELATION_TO_ARROW{ $self->relation_type };
 }
 
 sub TO_JSON {

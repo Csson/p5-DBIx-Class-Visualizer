@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Snapshot;
 use if $ENV{'AUTHOR_TESTING'}, 'Test::Warnings';
 
 use lib 't/lib';
@@ -11,25 +12,35 @@ my $schema = TestFor::DbicVisualizer::Schema->connect;
 
 subtest standard => sub {
     my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema);
+    is_deeply [ map $_->name, grep $_->show, @{ $vis->result_handlers } ],
+        [ qw(Author AuthorThing Book BookAuthor ResultSourceWithMissingRelation) ];
+    is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
+    is_deeply_snapshot [ $vis->as_graph->as_hashes ], 'graph as_hashes';
+    my $g = DBIx::Class::Visualizer::graphvizify($vis->as_graph);
+    my $gv = GraphViz2->from_graph($g);
+    is_deeply_snapshot $gv->dot_input, 'graphvizify dot_input';
     my $result_handler = $vis->result_handler('Author');
 
-    my @relations = $result_handler->get_relations('author_id');
+    my @relations = $result_handler->get_relations('id');
 
     my $book_author_relation = (grep { $_->destination_table eq 'BookAuthor'} @relations)[0];
     my $author_thing_relation = (grep { $_->destination_table eq 'AuthorThing'} @relations)[0];
 
     is $book_author_relation->relation_type, 'has_many', 'Correct relation type';
     ok $book_author_relation->added_to_graph, 'Relation is added';
-    is $vis->result_handler('BookAuthor')->get_relation_between('author_id', 'Author', 'author_id')->relation_type, 'belongs_to', 'Correct reverse relation type';
+    is $vis->result_handler('BookAuthor')->get_relation_between('author_id', 'Author', 'id')->relation_type, 'belongs_to', 'Correct reverse relation type';
 
     is $author_thing_relation->arrow_type, 'vee', 'Correct arrow type';
 };
 
 subtest wanted => sub {
     my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema, wanted_result_source_names => ['Author'], degrees_of_separation => 1);
+    is_deeply [ map $_->name, grep $_->show, @{ $vis->result_handlers } ],
+        [ qw(Author) ];
+    is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
-    my @relations = $result_handler->get_relations('author_id');
+    my @relations = $result_handler->get_relations('id');
     my $book_author_relation = (grep { $_->destination_table eq 'BookAuthor'} @relations)[0];
     is $book_author_relation->relation_type, 'has_many', 'Correct relation type';
     ok $book_author_relation->added_to_graph, 'Relation is added';
@@ -41,9 +52,12 @@ subtest wanted => sub {
 };
 subtest skipped => sub {
     my $vis = DBIx::Class::Visualizer->new(logger_conf => [], schema => $schema, skip_result_source_names => ['Book'], degrees_of_separation => 10);
+    is_deeply [ map $_->name, grep $_->show, @{ $vis->result_handlers } ],
+        [ qw(Author AuthorThing BookAuthor ResultSourceWithMissingRelation) ];
+    is_deeply_snapshot $vis->graph->dot_input, 'dot_input';
     my $result_handler = $vis->result_handler('Author');
 
-    my @relations = $result_handler->get_relations('author_id');
+    my @relations = $result_handler->get_relations('id');
     my $book_author_relation = (grep { $_->destination_table eq 'BookAuthor'} @relations)[0];
     is $book_author_relation->relation_type, 'has_many', 'Correct relation type';
     ok $book_author_relation->added_to_graph, 'Relation is added';

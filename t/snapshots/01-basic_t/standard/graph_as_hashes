@@ -1,0 +1,121 @@
+[
+  {
+    'Author' => {
+      'columns' => [
+        'id',
+        'name',
+        'birth_date'
+      ],
+      'foreign_keys' => [],
+      'primary_keys' => [
+        'id'
+      ]
+    },
+    'AuthorThing' => {
+      'columns' => [
+        'author_id',
+        'thing'
+      ],
+      'foreign_keys' => [],
+      'primary_keys' => [
+        'author_id'
+      ]
+    },
+    'Book' => {
+      'columns' => [
+        'book_id',
+        'isbn',
+        'title'
+      ],
+      'foreign_keys' => [],
+      'primary_keys' => [
+        'book_id'
+      ]
+    },
+    'BookAuthor' => {
+      'columns' => [
+        'book_id',
+        'author_id'
+      ],
+      'foreign_keys' => [
+        'book_id',
+        'author_id'
+      ],
+      'primary_keys' => [
+        'book_id',
+        'author_id'
+      ]
+    },
+    'ResultSourceWithMissingRelation' => {
+      'columns' => [
+        'an_id',
+        'author_id'
+      ],
+      'foreign_keys' => [],
+      'primary_keys' => [
+        'an_id'
+      ]
+    }
+  },
+  {
+    'Author' => {
+      'AuthorThing' => {
+        'author_thing.author_id' => {
+          'from_key' => 'id',
+          'to_key' => 'author_id',
+          'type' => 'has_one'
+        }
+      },
+      'BookAuthor' => {
+        'book_authors.author_id' => {
+          'from_key' => 'id',
+          'to_key' => 'author_id',
+          'type' => 'has_many'
+        }
+      }
+    },
+    'AuthorThing' => {
+      'Author' => {
+        'author.id' => {
+          'from_key' => 'author_id',
+          'to_key' => 'id',
+          'type' => 'belongs_to'
+        }
+      }
+    },
+    'Book' => {
+      'BookAuthor' => {
+        'book_authors.book_id' => {
+          'from_key' => 'book_id',
+          'to_key' => 'book_id',
+          'type' => 'has_many'
+        }
+      }
+    },
+    'BookAuthor' => {
+      'Author' => {
+        'author.id' => {
+          'from_key' => 'author_id',
+          'to_key' => 'id',
+          'type' => 'belongs_to'
+        }
+      },
+      'Book' => {
+        'book.book_id' => {
+          'from_key' => 'book_id',
+          'to_key' => 'book_id',
+          'type' => 'belongs_to'
+        }
+      }
+    },
+    'ResultSourceWithMissingRelation' => {
+      'Author' => {
+        'author.id' => {
+          'from_key' => 'author_id',
+          'to_key' => 'id',
+          'type' => 'belongs_to'
+        }
+      }
+    }
+  }
+]
